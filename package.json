@@ -14,6 +14,9 @@
   ],
   "scripts": {
     "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:mock": "concurrently -n mock,server,web -c yellow,cyan,magenta \"npm:dev:mock:upstream\" \"npm:dev:mock:server\" \"npm:dev:web\"",
+    "dev:mock:upstream": "npm run mock -w server",
+    "dev:mock:server": "cross-env OPENROUTER_BASE_URL=http://localhost:8788 OPENROUTER_API_KEY=dev-mock npm run dev -w server",
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w web",
@@ -21,6 +24,7 @@
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3"
   }
 }

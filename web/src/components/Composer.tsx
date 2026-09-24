@@ -17,8 +17,14 @@ export function Composer({ busy, onSend, onStop }: Props) {
     const el = areaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    const max = parseFloat(getComputedStyle(el).lineHeight) * MAX_ROWS;
-    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    const styles = getComputedStyle(el);
+    // scrollHeight не включает border, а height при box-sizing: border-box —
+    // включает. Без этой поправки поле на два пикселя ниже содержимого,
+    // и браузер рисует в нём паразитный скроллбар.
+    const borders =
+      parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
+    const max = parseFloat(styles.lineHeight) * MAX_ROWS;
+    el.style.height = `${Math.min(el.scrollHeight + borders, max)}px`;
   }, [text]);
 
   // Генерация кончилась — возвращаем фокус в поле, чтобы можно было

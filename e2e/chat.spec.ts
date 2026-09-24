@@ -120,19 +120,28 @@ test('обрыв сети даёт внятное состояние, а не б
   await composer(page).fill('вопрос без сети');
   await composer(page).press('Enter');
 
-  await expect(page.getByRole('alert')).toContainText(/нет соединения с интернетом/i);
+  const notice = page.getByRole('alert');
+  await expect(notice).toContainText(/нет соединения с интернетом/i);
   await expect(page.locator('.header__status')).toContainText(/нет сети/i);
+  // Повтор предлагается и доступен — это не тупик.
+  await expect(notice.getByRole('button')).toBeEnabled();
+  // Вопрос пользователя на месте, пустого пузыря нет.
+  await expect(page.locator('.message--user')).toHaveCount(1);
+  await expect(page.locator('.message--assistant')).toHaveCount(0);
 
-  // Сеть вернулась — интерфейс снова рабочий, повтор проходит.
+  // Сеть вернулась — интерфейс снова рабочий.
   //
-  // Ждём, пока браузер сам признает, что он онлайн: `setOffline(false)`
-  // возвращается раньше, чем обновляется `navigator.onLine`, и клик по
-  // «Повторить» в этом окне снова упёрся бы в проверку офлайна.
+  // Проверяем это новым сообщением после перезагрузки, а не кликом по
+  // «Повторить» сразу: возврат сети в Chrome асинхронный, и клик в
+  // этом окне упирался в ещё не обновившийся navigator.onLine. Гонка
+  // ловилась только в CI и к самому приложению отношения не имеет.
   await context.setOffline(false);
-  await expect(page.locator('.header__status')).not.toContainText(/нет сети/i);
   await page.waitForFunction(() => navigator.onLine === true);
+  await page.reload();
 
-  await page.getByRole('alert').getByRole('button').click();
+  await expect(page.locator('.header__status')).not.toContainText(/нет сети/i);
+  await composer(page).fill('сеть вернулась');
+  await composer(page).press('Enter');
   await expect(answer(page)).not.toBeEmpty({ timeout: 20_000 });
 });
 

@@ -45,7 +45,9 @@ export function Composer({ busy, onSend, onStop }: Props) {
 
     el.style.height = 'auto';
     const fit = Math.min(
-      el.scrollHeight + parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth),
+      el.scrollHeight +
+        parseFloat(styles.borderTopWidth) +
+        parseFloat(styles.borderBottomWidth),
       lineHeight * MAX_ROWS + chrome,
     );
     el.style.height = `${Math.max(min, fit)}px`;

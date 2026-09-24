@@ -102,6 +102,15 @@ app.post('/api/chat', async (c) => {
   });
 });
 
+// Неизвестный путь под /api — это ошибка API, а не страница.
+//
+// Без этого SPA-фолбэк ниже отдавал бы на /api/опечатка HTML с кодом
+// 200: клиент получал бы «успех» и разбирал вёрстку как JSON.
+// Правило стоит до фолбэка, иначе не сработает.
+app.all('/api/*', (c) =>
+  c.json({ code: 'bad_request', message: 'Неизвестный метод API.', retryable: false }, 404),
+);
+
 // Прод: собранный фронт с того же origin.
 if (config.isProduction) {
   app.use('/*', serveStatic({ root: '../web/dist' }));

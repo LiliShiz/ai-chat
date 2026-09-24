@@ -37,7 +37,13 @@ export function useChat(model: string | null): UseChat {
   // внутрь updater'а setState: в StrictMode он выполняется дважды и запрос
   // ушёл бы два раза. Поэтому читаем историю отсюда, а не из updater'а.
   const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  // Синхронизируем после коммита, а не во время рендера: запись в ref
+  // на рендере — источник трудноуловимых рассинхронов, и линтер
+  // ругается справедливо. Обработчикам этого достаточно: они срабатывают
+  // уже после того, как React применил изменения.
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => saveHistory(messages), [messages]);
 
@@ -133,7 +139,13 @@ export function useChat(model: string | null): UseChat {
         }),
       );
 
-      if (outcome.status === 'error') setError(outcome.error);
+      if (outcome.status === 'error') {
+        const { retryAfterSec } = outcome.error;
+        setError({
+          ...outcome.error,
+          retryAt: retryAfterSec ? Date.now() + retryAfterSec * 1000 : undefined,
+        });
+      }
     },
     [model],
   );

@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 
 import type { Message } from '../types';
 import type { ChatStatus } from '../hooks/useChat';
+import { useCopy } from '../hooks/useCopy';
 
 const Markdown = lazy(() => import('./Markdown'));
 
@@ -51,6 +52,19 @@ export function MessageList({ messages, status, onRegenerate }: Props) {
 
   return (
     <>
+      {/* Кнопка стоит ПЕРЕД лентой по DOM, хотя видна под ней.
+          Лента прокручиваемая, а Chrome делает такие контейнеры
+          focusable: при переходе табом фокус попадал в неё, она
+          прокручивалась вниз — и кнопка исчезала раньше, чем до неё
+          доходила очередь. То есть с клавиатуры она была
+          недостижима. Позиционирование абсолютное, поэтому порядок
+          в разметке можно выбрать по смыслу, а не по виду. */}
+      {!atBottom && (
+        <button type="button" className="jump" onClick={jump}>
+          ↓ К последнему
+        </button>
+      )}
+
       <ol className="messages" ref={listRef}>
         {messages.map((message) => (
           <MessageItem
@@ -65,12 +79,6 @@ export function MessageList({ messages, status, onRegenerate }: Props) {
         {/* Внутри ol допустимы только li — поэтому якорь тоже li. */}
         <li className="messages__end" ref={endRef} aria-hidden="true" />
       </ol>
-
-      {!atBottom && (
-        <button type="button" className="jump" onClick={jump}>
-          ↓ К последнему
-        </button>
-      )}
     </>
   );
 }
@@ -82,18 +90,8 @@ interface ItemProps {
 }
 
 function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopy();
   const isAssistant = message.role === 'assistant';
-
-  const copy = () => {
-    navigator.clipboard.writeText(message.content).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      },
-      () => {},
-    );
-  };
 
   return (
     <li
@@ -102,13 +100,7 @@ function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
       }`}
     >
       <span className="message__author">
-        {isAssistant ? (
-          <>
-            Модель {message.model && <em>{message.model}</em>}
-          </>
-        ) : (
-          'Вы'
-        )}
+        {isAssistant ? <>Модель {message.model && <em>{message.model}</em>}</> : 'Вы'}
       </span>
 
       <div
@@ -127,7 +119,7 @@ function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
           // текст, а не спиннер: содержимое уже есть, прятать его
           // ради загрузки оформления незачем.
           <Suspense fallback={<p>{message.content}</p>}>
-            <Markdown>{message.content}</Markdown>
+            <Markdown streaming={streaming}>{message.content}</Markdown>
           </Suspense>
         ) : (
           message.content
@@ -155,7 +147,7 @@ function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
 
       {isAssistant && !streaming && message.content && (
         <div className="message__tools">
-          <button type="button" className="tool" onClick={copy}>
+          <button type="button" className="tool" onClick={() => copy(message.content)}>
             {copied ? 'Скопировано' : 'Копировать'}
           </button>
           {onRegenerate && (

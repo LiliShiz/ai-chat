@@ -18,7 +18,7 @@ const TITLES: Record<ChatError['code'], string> = {
 };
 
 export function ErrorNotice({ error, onRetry }: Props) {
-  const countdown = useCountdown(error.retryAfterSec);
+  const countdown = useCountdown(error.retryAt);
 
   return (
     // role="alert" — скринридер сообщит об ошибке сразу, не дожидаясь,
@@ -43,26 +43,23 @@ export function ErrorNotice({ error, onRetry }: Props) {
   );
 }
 
-/** Обратный отсчёт до момента, когда повтор имеет смысл (Retry-After от 429). */
-function useCountdown(seconds: number | undefined): number {
-  const [left, setLeft] = useState(seconds ?? 0);
+/**
+ * Обратный отсчёт до момента, когда повтор имеет смысл (Retry-After).
+ *
+ * Считается от дедлайна, а не уменьшением счётчика по тику. Так
+ * отсчёт не врёт, если вкладку свернули и таймеры притормозили, и
+ * не приходится сбрасывать state из эффекта при смене props —
+ * дедлайн просто пересчитывается вместе с `seconds`.
+ */
+function useCountdown(deadline: number | undefined): number {
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    setLeft(seconds ?? 0);
-    if (!seconds) return;
-
-    const id = setInterval(() => {
-      setLeft((value) => {
-        if (value <= 1) {
-          clearInterval(id);
-          return 0;
-        }
-        return value - 1;
-      });
-    }, 1000);
-
+    if (!deadline) return;
+    const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
-  }, [seconds]);
+  }, [deadline]);
 
-  return left;
+  if (!deadline) return 0;
+  return Math.max(0, Math.ceil((deadline - now) / 1000));
 }

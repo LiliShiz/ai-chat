@@ -1,0 +1,14 @@
+dist
+node_modules
+package-lock.json
+playwright-report
+test-results
+docs
+.planning/sketches
+
+# Проза и CI форматируются руками: prettier переливает markdown
+# по-своему и ломает выверенные переносы, а в yaml переставляет
+# кавычки в shell-строках.
+*.md
+*.yml
+*.yaml

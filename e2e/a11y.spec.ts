@@ -50,8 +50,17 @@ test('фокус виден при навигации с клавиатуры и
 
   const focused = page.locator(':focus-visible');
   await expect(focused).toHaveCount(1);
-  const ring = await focused.evaluate((el) => getComputedStyle(el).boxShadow);
-  expect(ring).not.toBe('none');
+
+  // Ассерт «тень не none» слишком слаб: у элемента может быть своя
+  // декоративная тень, и кольцо при этом потеряно. Сверяем с тем,
+  // что реально объявлено в --focus-ring.
+  const hasRing = await focused.evaluate((el) => {
+    const ring = getComputedStyle(el).getPropertyValue('--focus-ring').trim();
+    const shadow = getComputedStyle(el).boxShadow;
+    // Браузер нормализует цвета, поэтому сверяем по ширине колец.
+    return shadow.includes('4px') && ring.length > 0;
+  });
+  expect(hasRing).toBe(true);
 
   // Клик мышью кольцо не рисует — иначе интерфейс пестрел бы
   // обводками при обычной работе.
@@ -60,9 +69,9 @@ test('фокус виден при навигации с клавиатуры и
   // спецификации матчат :focus-visible всегда, потому что принимают
   // ввод с клавиатуры. Разница между мышью и Tab видна именно на
   // кнопках — там она и важна.
-  await page.getByRole('button', { name: /тёмная тема/i }).click();
+  await page.getByRole('radio', { name: /тёмная тема/i }).click();
   await expect(page.locator('.theme__option:focus-visible')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /тёмная тема/i })).toBeFocused();
+  await expect(page.getByRole('radio', { name: /тёмная тема/i })).toBeFocused();
 });
 
 test('разметка семантичная, а не div-каша', async ({ page }) => {
@@ -114,7 +123,76 @@ test('на узком экране ничего не уезжает по гор�
   expect(overflow).toBe(0);
 
   // Тач-таргеты не меньше 44px — иначе пальцем не попасть.
-  const send = page.getByRole('button', { name: /^отправить$/i });
-  const box = await send.boundingBox();
-  expect(box!.height).toBeGreaterThanOrEqual(44);
+  // Проверяем все кнопки на экране, а не одну: раньше тут стояла
+  // только «Отправить» — единственная, которая порог и проходила.
+  const small: string[] = [];
+  for (const button of await page.locator('button:visible').all()) {
+    const box = await button.boundingBox();
+    if (!box) continue;
+    if (box.height < 44 || box.width < 44) {
+      small.push(`${await button.getAttribute('class')} ${box.width}x${box.height}`);
+    }
+  }
+  expect(small, `мелкие тач-таргеты: ${small.join('; ')}`).toEqual([]);
+});
+
+test('у каждой кнопки есть видимое кольцо фокуса', async ({ page }) => {
+  // Регрессия, которую поймала внешняя приёмка: у кнопки «К последнему»
+  // собственная тень перебивала правило :focus-visible просто потому,
+  // что стояла ниже по файлу. Проверять фокус на одном элементе
+  // недостаточно — ломается он поштучно.
+  //
+  // Обходим Tab'ом, а не el.focus(): :focus-visible ставится по
+  // эвристике браузера, и программный фокус её не включает.
+  await composer(page).fill('#long длинный ответ');
+  await composer(page).press('Enter');
+  // Ждём, пока лента станет заметно длиннее окна — иначе прокручивать
+  // некуда и кнопка «К последнему» просто не появится.
+  await page.locator('.messages').evaluate(
+    (el) =>
+      new Promise<void>((resolve) => {
+        const tick = setInterval(() => {
+          if (el.scrollHeight > el.clientHeight * 2) {
+            clearInterval(tick);
+            resolve();
+          }
+        }, 100);
+      }),
+    { timeout: 20_000 },
+  );
+  await page.keyboard.press('Escape');
+  await page.locator('.messages').evaluate((el) => (el.scrollTop = 0));
+  await expect(page.locator('.jump')).toBeVisible();
+
+  const seen: string[] = [];
+  const missing: string[] = [];
+
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    const info = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el === document.body) return null;
+      return {
+        tag: el.tagName.toLowerCase(),
+        cls: el.className?.toString() ?? '',
+        visible: el.matches(':focus-visible'),
+        shadow: getComputedStyle(el).boxShadow,
+      };
+    });
+    if (!info || info.tag !== 'button') continue;
+
+    seen.push(info.cls);
+    // Ищем именно кольцо: `0px 0px 0px 4px` — то, во что браузер
+    // разворачивает внешний слой --focus-ring. Наивная проверка
+    // `includes('4px')` проходила бы на любой тени с «14px».
+    if (!info.visible || !/0px 0px 0px 4px/.test(info.shadow)) missing.push(info.cls);
+  }
+
+  // Кнопки вообще нашлись — иначе тест ничего не проверил бы.
+  expect(seen.length).toBeGreaterThanOrEqual(3);
+  // И среди них именно та, на которой кольцо терялось. Без этой
+  // проверки тест зелёный даже когда до кнопки просто не доходит
+  // фокус — то есть проверяет не то, что обещает.
+  expect(seen.join(' '), 'кнопка «К последнему» недостижима табом').toContain('jump');
+  expect(missing, `без кольца фокуса: ${missing.join(', ')}`).toEqual([]);
 });

@@ -14,6 +14,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // webServer умеет ждать один адрес, а стенд поднимает три процесса.
+  // Прокси ждём отдельно — иначе его падение выглядит как полтора
+  // десятка «элемент не найден» вместо внятной причины.
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
   timeout: 45_000,

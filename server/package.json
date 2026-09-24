@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=../.env src/index.ts",
-    "start": "cross-env NODE_ENV=production tsx --env-file-if-exists=../.env src/index.ts",
+    "dev": "node --watch --import tsx src/index.ts",
+    "start": "cross-env NODE_ENV=production tsx src/index.ts",
     "mock": "tsx src/dev/mock-upstream.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

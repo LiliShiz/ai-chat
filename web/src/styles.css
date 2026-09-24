@@ -85,6 +85,19 @@ body {
   }
 }
 
+/* Режим высокой контрастности Windows отбрасывает box-shadow целиком —
+   а значит, и наше кольцо. Это самая известная ловушка подмены
+   `outline` тенью, и бьёт она ровно по тем, ради кого существует
+   видимый фокус. Здесь возвращаем настоящий outline: системную
+   палитру в этом режиме всё равно задаёт ОС, и разнобоя, из-за
+   которого обводку просили убрать, не будет. */
+@media (forced-colors: active) {
+  :where(button, textarea, input, a, [tabindex]):focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;
@@ -596,9 +609,22 @@ body {
   font-size: 0.92em;
 }
 
-/* На тач-устройствах физической клавиатуры нет, а место дорого */
+/* На тач-устройствах физической клавиатуры нет, а место дорого.
+   Прячем визуально, но НЕ через display: none — подсказка служит
+   целью aria-describedby у поля ввода, а display: none выкидывает
+   элемент из дерева доступности. На планшете с внешней клавиатурой
+   и скринридером описание поля просто исчезло бы. */
 @media (max-width: 560px), (pointer: coarse) {
-  .composer__hint { display: none }
+  .composer__hint {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 /* На узком экране кнопка съедает у поля почти половину ширины: на

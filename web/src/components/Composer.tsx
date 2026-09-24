@@ -76,10 +76,17 @@ export function Composer({ busy, onSend, onStop }: Props) {
     return () => observer.disconnect();
   }, [resize]);
 
-  // Генерация кончилась — возвращаем фокус в поле, чтобы можно было
+  // Возвращаем фокус в поле, когда генерация закончилась — чтобы
   // продолжать диалог, не трогая мышь.
+  //
+  // Именно на переходе «шла → закончилась», а не при каждом idle:
+  // иначе фокус забирался бы и при первом рендере (на мобильном это
+  // сразу выехавшая клавиатура поверх пустого экрана), и у элемента,
+  // куда пользователь ушёл табом, пока читал ответ.
+  const wasBusy = useRef(false);
   useEffect(() => {
-    if (!busy) areaRef.current?.focus();
+    if (wasBusy.current && !busy) areaRef.current?.focus();
+    wasBusy.current = busy;
   }, [busy]);
 
   const submit = () => {

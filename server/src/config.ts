@@ -32,10 +32,15 @@ export const config = {
   hasApiKey: () => Boolean(process.env.OPENROUTER_API_KEY),
 
   /**
-   * Бесплатная модель OpenRouter (суффикс `:free`). Каталог бесплатных моделей
-   * меняется, поэтому вынесено в env — заменить можно без правки кода.
+   * Бесплатная модель OpenRouter (суффикс `:free`).
+   *
+   * Каталог бесплатных моделей меняется: `deepseek-chat-v3-0324:free`,
+   * стоявшая здесь раньше, уехала в платные прямо по ходу работы.
+   * Поэтому значение вынесено в env — заменить можно без правки кода,
+   * а актуальный список берётся из GET /api/v1/models с фильтром
+   * по суффиксу `:free`.
    */
-  model: process.env.OPENROUTER_MODEL ?? 'deepseek/deepseek-chat-v3-0324:free',
+  model: process.env.OPENROUTER_MODEL ?? 'google/gemma-4-31b-it:free',
 
   baseUrl: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
 
@@ -48,6 +53,13 @@ export const config = {
   /** Потолок на длину истории, уходящей в модель, — защита от разрастания запроса. */
   maxMessages: num('MAX_MESSAGES', 40),
   maxMessageChars: num('MAX_MESSAGE_CHARS', 8_000),
+
+  /**
+   * Потолок на тело запроса. Проверяется до разбора JSON: прокси стоит
+   * без авторизации, и буферизовать что угодно из внешней сети нельзя.
+   * С запасом над maxMessages × maxMessageChars.
+   */
+  maxBodyBytes: num('MAX_BODY_BYTES', 1_000_000),
 
   /** Origin фронта в dev-режиме: Vite поднимается отдельно от сервера. */
   devOrigin: process.env.DEV_ORIGIN ?? 'http://localhost:5173',

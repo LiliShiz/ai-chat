@@ -53,6 +53,21 @@ describe('POST /api/chat — проверка запроса', () => {
   });
 });
 
+describe('POST /api/chat — размер тела', () => {
+  it('отклоняет гигантское тело, не читая его', async () => {
+    // Прокси стоит без авторизации: буферизовать что угодно из внешней
+    // сети нельзя. Проверка идёт по Content-Length, до c.req.json().
+    const response = await app.request('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': '99999999' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'привет' }] }),
+    });
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: 'bad_request', retryable: false });
+  });
+});
+
 describe('POST /api/chat — без ключа', () => {
   it('честно отвечает 503, а не падает', async () => {
     delete process.env.OPENROUTER_API_KEY;

@@ -36,6 +36,17 @@ app.post('/api/chat', async (c) => {
     );
   }
 
+  // Отсекаем гигантское тело ДО разбора: c.req.json() буферизует его
+  // целиком, и проверять лимиты после этого уже поздно — процесс к тому
+  // моменту уже съел память.
+  const declared = Number(c.req.header('content-length') ?? 0);
+  if (declared > config.maxBodyBytes) {
+    return c.json(
+      { code: 'bad_request', message: 'Запрос слишком большой.', retryable: false },
+      413,
+    );
+  }
+
   const messages = parseMessages(await c.req.json().catch(() => null));
   if ('error' in messages) {
     return c.json({ code: 'bad_request', message: messages.error, retryable: false }, 400);
@@ -54,6 +65,25 @@ app.post('/api/chat', async (c) => {
         }
         controller.enqueue(encoder.encode(encodeEvent(value)));
       } catch {
+        // Молча закрывать поток нельзя: клиент получит обрыв без
+        // единого события и решит, что ответ закончился нормально.
+        // Отдаём явную ошибку — и только потом закрываем.
+        try {
+          controller.enqueue(
+            encoder.encode(
+              encodeEvent({
+                type: 'error',
+                error: {
+                  code: 'unknown',
+                  message: 'Ответ прервался на стороне сервера.',
+                  retryable: true,
+                },
+              }),
+            ),
+          );
+        } catch {
+          // Соединение уже закрыто клиентом — писать некуда.
+        }
         controller.close();
       }
     },

@@ -92,7 +92,171 @@ describe('обычный обмен репликами', () => {
   });
 });
 
+/**
+ * Поток, которым управляет тест: отдаёт токены по команде и
+ * завершается только тогда, когда его попросят. Нужен, чтобы
+ * проверять саму отмену, а не подстановку готового исхода.
+ */
+function controllable() {
+  let deliver!: (text: string) => void;
+  let finish!: (outcome: StreamOutcome) => void;
+  let capturedSignal!: AbortSignal;
+
+  const started = new Promise<void>((resolveStarted) => {
+    streamChat.mockImplementationOnce(
+      (_messages: unknown, signal: AbortSignal, onDelta: (text: string) => void) => {
+        capturedSignal = signal;
+        deliver = onDelta;
+        resolveStarted();
+        return new Promise<StreamOutcome>((resolve) => {
+          finish = resolve;
+          // Настоящий streamChat на отмене возвращает 'aborted'.
+          signal.addEventListener('abort', () => resolve({ status: 'aborted' }), { once: true });
+        });
+      },
+    );
+  });
+
+  return {
+    started,
+    deliver: (text: string) => deliver(text),
+    finish: (outcome: StreamOutcome = { status: 'done' }) => finish(outcome),
+    get signal() {
+      return capturedSignal;
+    },
+  };
+}
+
 describe('остановка', () => {
+  it('stop() действительно абортит сигнал, с которым ушёл запрос', async () => {
+    // Главное свойство: «Стоп» не прячет текст в интерфейсе, а рвёт
+    // запрос — значит генерация на сервере прекращается.
+    const stream = controllable();
+
+    const { result } = renderHook(() => useChat(MODEL));
+    await act(async () => {
+      result.current.send('вопрос');
+      await stream.started;
+    });
+
+    expect(stream.signal.aborted).toBe(false);
+
+    await act(async () => {
+      result.current.stop();
+    });
+
+    expect(stream.signal.aborted).toBe(true);
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+  });
+
+  it('дописывает хвост буфера, не вылившийся в последнем кадре', async () => {
+    // Токены копятся и выливаются в state раз в кадр. Если не добрать
+    // остаток при остановке, теряются последние символы — ровно те,
+    // что пришли между последним кадром и нажатием «Стоп».
+    const stream = controllable();
+
+    const { result } = renderHook(() => useChat(MODEL));
+    await act(async () => {
+      result.current.send('вопрос');
+      await stream.started;
+    });
+
+    // Кадр не даём случиться: токены остаются в буфере.
+    act(() => stream.deliver('хвост, который чуть не потеряли'));
+
+    await act(async () => {
+      result.current.stop();
+    });
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+
+    expect(result.current.messages[1]).toMatchObject({
+      content: 'хвост, который чуть не потеряли',
+      stopped: true,
+    });
+  });
+
+  it('во время генерации второе сообщение не отправляется', async () => {
+    const stream = controllable();
+
+    const { result } = renderHook(() => useChat(MODEL));
+    await act(async () => {
+      result.current.send('первый');
+      await stream.started;
+    });
+
+    await act(async () => result.current.send('второй'));
+
+    expect(streamChat).toHaveBeenCalledTimes(1);
+    expect(result.current.messages.map((m) => m.content)).toEqual(['первый', '']);
+  });
+
+  it('после «Стоп» сразу можно отправить новое — и его тоже можно остановить', async () => {
+    // Та самая гонка: stop() освобождает слот синхронно, а
+    // продолжение прерванного запуска досчитывается позже. Если оно
+    // затрёт контроллер нового запроса, «Стоп» для него молча умрёт.
+    const first = controllable();
+
+    const { result } = renderHook(() => useChat(MODEL));
+    await act(async () => {
+      result.current.send('первый');
+      await first.started;
+    });
+    act(() => first.deliver('кусок'));
+
+    const second = controllable();
+    await act(async () => {
+      result.current.stop();
+      result.current.send('второй');
+      await second.started;
+    });
+
+    expect(streamChat).toHaveBeenCalledTimes(2);
+
+    // Даём продолжению первого запуска досчитаться и затереть всё, что
+    // оно могло бы затереть.
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.stop();
+    });
+
+    expect(second.signal.aborted).toBe(true);
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+  });
+
+  it('хвост прерванного потока не утекает в следующее сообщение', async () => {
+    const first = controllable();
+
+    const { result } = renderHook(() => useChat(MODEL));
+    await act(async () => {
+      result.current.send('первый');
+      await first.started;
+    });
+    act(() => first.deliver('старый хвост'));
+
+    const second = controllable();
+    await act(async () => {
+      result.current.stop();
+      result.current.send('второй');
+      await second.started;
+    });
+
+    act(() => second.deliver('новый текст'));
+    await act(async () => {
+      second.finish();
+    });
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+
+    const last = result.current.messages.at(-1);
+    expect(last?.content).toBe('новый текст');
+    expect(last?.content).not.toContain('старый хвост');
+  });
+});
+
+describe('остановка — маппинг исхода', () => {
   it('сохраняет уже полученный кусок и помечает ответ прерванным', async () => {
     // Требование ТЗ: после остановки интерфейс живой, а полученный
     // кусок остаётся в истории.

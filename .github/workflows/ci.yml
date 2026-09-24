@@ -23,3 +23,18 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+      # Дымовой прогон прод-режима. Добавлен после того, как
+      # выяснилось, что `npm start` не выставлял NODE_ENV и отдавал
+      # 404 на всё, кроме /api — сборка это не ловила, потому что
+      # собиралось-то всё успешно.
+      - name: Smoke — прод-режим отдаёт фронт и /api/health
+        run: |
+          OPENROUTER_API_KEY=ci-smoke-not-a-real-key npm start &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8787/api/health >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:8787/api/health | grep -q '"ok":true'
+          curl -sf http://localhost:8787/ | grep -qi '<div id="root">'
+          kill %1

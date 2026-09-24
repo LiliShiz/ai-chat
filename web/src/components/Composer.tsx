@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
   busy: boolean;
@@ -7,25 +7,74 @@ interface Props {
 }
 
 const MAX_ROWS = 8;
+/** Минимальный комфортный тач-таргет — совпадает с высотой кнопки. */
+const MIN_TARGET = 46;
 
 export function Composer({ busy, onSend, onStop }: Props) {
   const [text, setText] = useState('');
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Textarea растёт под текст до потолка, дальше скроллится.
-  useEffect(() => {
+  const resize = useCallback(() => {
     const el = areaRef.current;
     if (!el) return;
-    el.style.height = 'auto';
+
     const styles = getComputedStyle(el);
     // scrollHeight не включает border, а height при box-sizing: border-box —
-    // включает. Без этой поправки поле на два пикселя ниже содержимого,
-    // и браузер рисует в нём паразитный скроллбар.
-    const borders =
-      parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
-    const max = parseFloat(styles.lineHeight) * MAX_ROWS;
-    el.style.height = `${Math.min(el.scrollHeight + borders, max)}px`;
-  }, [text]);
+    // включает. Без этой поправки поле на пару пикселей ниже содержимого,
+    // и браузер рисует в нём паразитный скроллбар со стрелками.
+    const chrome =
+      parseFloat(styles.borderTopWidth) +
+      parseFloat(styles.borderBottomWidth) +
+      parseFloat(styles.paddingTop) +
+      parseFloat(styles.paddingBottom);
+    const lineHeight = parseFloat(styles.lineHeight);
+
+    // Минимум считаем, а не задаём константой: он должен вмещать ровно
+    // одну строку текущим шрифтом. Захардкоженное число на пиксель
+    // разойдётся с метрикой — и снова появится скроллбар.
+    const oneLine = Math.ceil(lineHeight + chrome);
+    const min = Math.max(MIN_TARGET, oneLine);
+
+    // Пустое поле — всегда одна строка. Иначе высота считается по
+    // плейсхолдеру: на узком экране он переносится, и незаполненное
+    // поле открывается двухстрочным без всякой на то причины.
+    if (!el.value) {
+      el.style.height = `${min}px`;
+      return;
+    }
+
+    el.style.height = 'auto';
+    const fit = Math.min(
+      el.scrollHeight + parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth),
+      lineHeight * MAX_ROWS + chrome,
+    );
+    el.style.height = `${Math.max(min, fit)}px`;
+  }, []);
+
+  // Textarea растёт под текст до потолка, дальше скроллится.
+  useEffect(resize, [text, resize]);
+
+  // Пересчитываем ещё в двух случаях, про которые легко забыть:
+  //
+  // 1. Когда догрузились шрифты. Первый замер идёт системным шрифтом,
+  //    а у Literata другая ширина — на узком экране плейсхолдер после
+  //    подмены начинает переноситься на вторую строку, и поле,
+  //    посчитанное под одну, обрезает текст.
+  // 2. Когда изменилась ширина: поворот экрана или появление
+  //    клавиатуры меняют число строк при том же тексте.
+  useEffect(() => {
+    document.fonts?.ready.then(resize).catch(() => {});
+
+    // Наблюдаем за родителем, а не за самим полем: resize меняет его
+    // высоту, наблюдатель сработал бы на собственное изменение и ушёл
+    // в бесконечный цикл.
+    const parent = areaRef.current?.parentElement;
+    if (!parent) return;
+
+    const observer = new ResizeObserver(resize);
+    observer.observe(parent);
+    return () => observer.disconnect();
+  }, [resize]);
 
   // Генерация кончилась — возвращаем фокус в поле, чтобы можно было
   // продолжать диалог, не трогая мышь.
@@ -57,7 +106,7 @@ export function Composer({ busy, onSend, onStop }: Props) {
         className="composer__input"
         rows={1}
         value={text}
-        placeholder="Спросите что-нибудь…"
+        placeholder="Спросите что-нибудь"
         // Enter отправляет, Shift+Enter переносит строку — как ждёт ТЗ
         // и как устроено в любом чате, которым люди пользуются.
         onKeyDown={(event) => {

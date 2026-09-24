@@ -4,18 +4,21 @@ import { Composer } from './components/Composer';
 import { EmptyState } from './components/EmptyState';
 import { ErrorNotice } from './components/ErrorNotice';
 import { MessageList } from './components/MessageList';
+import { ThemeToggle } from './components/ThemeToggle';
 import { useChat } from './hooks/useChat';
+import { useTheme } from './hooks/useTheme';
 
 export default function App() {
-  const { messages, status, error, send, stop, retry, clear } = useChat();
   const model = useModelName();
+  const { messages, status, error, send, stop, retry, clear } = useChat(model);
+  const [theme, setTheme] = useTheme();
   const online = useOnline();
 
   const busy = status !== 'idle';
 
-  // Esc останавливает генерацию из любого места страницы — требование ТЗ.
-  // Слушатель глобальный, потому что фокус в этот момент может быть где угодно:
-  // на кнопке «Стоп», в поле ввода или вообще нигде.
+  // Esc останавливает генерацию из любого места страницы — требование
+  // ТЗ. Слушатель глобальный, потому что фокус в этот момент может
+  // быть где угодно: на кнопке «Стоп», в поле ввода или нигде.
   useEffect(() => {
     if (!busy) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -28,6 +31,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [busy, stop]);
 
+  // Чанк с markdown и подсветкой тянем заранее, в простое. К моменту
+  // первого ответа он уже на месте — и Suspense не успевает моргнуть.
+  useEffect(() => {
+    const idle = requestIdleCallbackSafe(() => void import('./components/Markdown'));
+    return () => cancelIdleCallbackSafe(idle);
+  }, []);
+
   return (
     <div className="app">
       <header className="header">
@@ -35,30 +45,33 @@ export default function App() {
 
         <p className="header__status" role="status">
           {!online
-            ? 'Нет сети'
+            ? 'нет сети'
             : status === 'waiting'
-              ? 'Модель думает…'
+              ? 'модель думает…'
               : status === 'streaming'
-                ? 'Модель печатает…'
+                ? 'модель печатает…'
                 : // Имя модели в шапке дублировало бы пустое состояние,
-                  // где оно и так подписано. В шапке — только когда есть диалог.
+                  // где оно и так подписано. Здесь — только в диалоге.
                   messages.length > 0
                   ? (model ?? '')
                   : ''}
         </p>
 
-        {messages.length > 0 && (
-          <button type="button" className="button button--ghost" onClick={clear}>
-            Очистить
-          </button>
-        )}
+        <div className="header__actions">
+          {messages.length > 0 && (
+            <button type="button" className="button button--ghost" onClick={clear}>
+              Очистить
+            </button>
+          )}
+          <ThemeToggle value={theme} onChange={setTheme} />
+        </div>
       </header>
 
       <main className="main">
         {messages.length === 0 ? (
           <EmptyState model={model} onPick={send} />
         ) : (
-          <MessageList messages={messages} status={status} />
+          <MessageList messages={messages} status={status} onRegenerate={retry} />
         )}
       </main>
 
@@ -71,8 +84,8 @@ export default function App() {
 }
 
 /**
- * Имя модели берём у сервера, а не хардкодим на фронте: модель задаётся
- * переменной окружения, и фронт про неё знать не обязан.
+ * Имя модели берём у сервера, а не хардкодим на фронте: модель
+ * задаётся переменной окружения, и клиенту знать её неоткуда.
  */
 function useModelName(): string | null {
   const [model, setModel] = useState<string | null>(null);
@@ -103,4 +116,20 @@ function useOnline(): boolean {
   }, []);
 
   return online;
+}
+
+// requestIdleCallback до сих пор нет в Safari — деградируем до таймера.
+// Каст нужен потому, что TS сужает window до never внутри ветки
+// `'requestIdleCallback' in window`, когда типа в lib нет.
+function requestIdleCallbackSafe(fn: () => void): number {
+  const ric = (window as Window & { requestIdleCallback?: (cb: () => void) => number })
+    .requestIdleCallback;
+  return ric ? ric(fn) : window.setTimeout(fn, 600);
+}
+
+function cancelIdleCallbackSafe(handle: number): void {
+  const cic = (window as Window & { cancelIdleCallback?: (id: number) => void })
+    .cancelIdleCallback;
+  if (cic) cic(handle);
+  else clearTimeout(handle);
 }

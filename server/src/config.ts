@@ -1,7 +1,21 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 /**
  * Вся конфигурация сервера — в одном месте, читается из окружения.
  * Ключ OpenRouter существует только здесь и никогда не покидает процесс.
  */
+
+/**
+ * `.env` грузим кодом, а не флагом `--env-file-if-exists`.
+ *
+ * Флаг выглядит безопасным, но `node --watch` ставит наблюдение на
+ * каждый переданный env-файл — и падает с ENOENT, если файла нет.
+ * В CI его нет никогда, и сервер там не поднимался вовсе. Здесь же
+ * отсутствие файла — просто отсутствие файла.
+ */
+const envPath = fileURLToPath(new URL('../../.env', import.meta.url));
+if (existsSync(envPath)) process.loadEnvFile(envPath);
 
 function required(name: string): string {
   const value = process.env[name];

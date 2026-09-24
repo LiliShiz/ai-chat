@@ -1,28 +1,38 @@
-import { useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Message } from '../types';
 import type { ChatStatus } from '../hooks/useChat';
 
+const Markdown = lazy(() => import('./Markdown'));
+
 interface Props {
   messages: Message[];
   status: ChatStatus;
+  onRegenerate: () => void;
 }
 
-export function MessageList({ messages, status }: Props) {
-  const endRef = useRef<HTMLLIElement>(null);
-  const listRef = useRef<HTMLOListElement>(null);
-  const pinnedRef = useRef(true);
+/** Насколько близко к низу лента считается «прилипшей». */
+const STICK_THRESHOLD = 90;
 
-  // Автопрокрутка — только если пользователь и так внизу. Иначе он не сможет
-  // перечитать начало длинного ответа: лента будет утаскивать его вниз.
+export function MessageList({ messages, status, onRegenerate }: Props) {
+  const listRef = useRef<HTMLOListElement>(null);
+  const endRef = useRef<HTMLLIElement>(null);
+  const pinnedRef = useRef(true);
+  const [atBottom, setAtBottom] = useState(true);
+
+  // Автопрокрутка работает, только пока пользователь внизу. Стоит ему
+  // отлистать вверх — лента замирает, иначе нельзя перечитать начало
+  // длинного ответа: каждый новый токен утаскивал бы обратно вниз.
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
+
     const onScroll = () => {
-      pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      const pinned = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_THRESHOLD;
+      pinnedRef.current = pinned;
+      setAtBottom(pinned);
     };
+
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
@@ -31,41 +41,117 @@ export function MessageList({ messages, status }: Props) {
     if (pinnedRef.current) endRef.current?.scrollIntoView({ block: 'end' });
   });
 
+  const jump = useCallback(() => {
+    pinnedRef.current = true;
+    setAtBottom(true);
+    endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, []);
+
+  const last = messages.at(-1);
+
   return (
-    <ol className="messages" ref={listRef}>
-      {messages.map((message) => (
-        <li
-          key={message.id}
-          className={`message message--${message.role}`}
-          // Поток текста озвучивается скринридером по мере поступления,
-          // но вежливо — не перебивая то, что он читает сейчас.
-          aria-live={message.role === 'assistant' ? 'polite' : undefined}
-        >
-          <span className="message__author">
-            {message.role === 'user' ? 'Вы' : 'Модель'}
-          </span>
+    <>
+      <ol className="messages" ref={listRef}>
+        {messages.map((message) => (
+          <MessageItem
+            key={message.id}
+            message={message}
+            streaming={message === last && status !== 'idle'}
+            // Перегенерировать можно только последний ответ: всё, что
+            // выше, уже стало контекстом для последующих реплик.
+            onRegenerate={message === last && status === 'idle' ? onRegenerate : undefined}
+          />
+        ))}
+        {/* Внутри ol допустимы только li — поэтому якорь тоже li. */}
+        <li className="messages__end" ref={endRef} aria-hidden="true" />
+      </ol>
 
-          <div className="message__body">
-            {message.role === 'assistant' ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-            ) : (
-              message.content
-            )}
+      {!atBottom && (
+        <button type="button" className="jump" onClick={jump}>
+          ↓ К последнему
+        </button>
+      )}
+    </>
+  );
+}
 
-            {/* Курсор печати живёт внутри пузыря, а не отдельной строкой —
-                иначе лента дёргается на каждый переход между состояниями. */}
-            {message.role === 'assistant' &&
-              message === messages.at(-1) &&
-              status !== 'idle' && <span className="caret" aria-hidden="true" />}
-          </div>
+interface ItemProps {
+  message: Message;
+  streaming: boolean;
+  onRegenerate?: () => void;
+}
 
-          {message.stopped && <p className="message__note">Остановлено вами</p>}
-          {message.failed && <p className="message__note">Ответ оборвался</p>}
-        </li>
-      ))}
-      {/* Якорь автопрокрутки. Внутри ol допустимы только li — поэтому li,
-          а не div: валидность разметки здесь дешевле, чем кажется. */}
-      <li className="messages__end" ref={endRef} aria-hidden="true" />
-    </ol>
+function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
+  const [copied, setCopied] = useState(false);
+  const isAssistant = message.role === 'assistant';
+
+  const copy = () => {
+    navigator.clipboard.writeText(message.content).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      },
+      () => {},
+    );
+  };
+
+  return (
+    <li className={`message message--${message.role}`}>
+      <span className="message__author">
+        {isAssistant ? (
+          <>
+            Модель {message.model && <em>{message.model}</em>}
+          </>
+        ) : (
+          'Вы'
+        )}
+      </span>
+
+      <div
+        className="message__body"
+        // Поток текста озвучивается по мере поступления, но вежливо —
+        // не перебивая то, что скринридер читает сейчас.
+        aria-live={isAssistant ? 'polite' : undefined}
+      >
+        {isAssistant ? (
+          // Пока чанк с markdown не подгрузился, показываем сырой
+          // текст, а не спиннер: содержимое уже есть, прятать его
+          // ради загрузки оформления незачем.
+          <Suspense fallback={<p>{message.content}</p>}>
+            <Markdown>{message.content}</Markdown>
+          </Suspense>
+        ) : (
+          message.content
+        )}
+
+        {/* Пока не пришёл первый токен, показываем пульсирующее место
+            под ответ: одинокий курсор на пустой строке читается как
+            «сломалось», а не как «модель думает». */}
+        {streaming &&
+          (message.content ? (
+            <span className="caret" aria-hidden="true" />
+          ) : (
+            <span className="pending" aria-hidden="true">
+              <i /><i /><i />
+            </span>
+          ))}
+      </div>
+
+      {message.stopped && <p className="message__note">Остановлено вами</p>}
+      {message.failed && <p className="message__note">Ответ оборвался</p>}
+
+      {isAssistant && !streaming && message.content && (
+        <div className="message__tools">
+          <button type="button" className="tool" onClick={copy}>
+            {copied ? 'Скопировано' : 'Копировать'}
+          </button>
+          {onRegenerate && (
+            <button type="button" className="tool" onClick={onRegenerate}>
+              Перегенерировать
+            </button>
+          )}
+        </div>
+      )}
+    </li>
   );
 }

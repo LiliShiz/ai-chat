@@ -26,7 +26,7 @@ export interface UseChat {
  * Вся логика диалога: одно место, где живёт состояние, отмена и восстановление
  * истории. Компоненты остаются немыми — их легко читать и переставлять.
  */
-export function useChat(): UseChat {
+export function useChat(model: string | null): UseChat {
   const [messages, setMessages] = useState<Message[]>(loadHistory);
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<ChatError | null>(null);
@@ -68,7 +68,10 @@ export function useChat(): UseChat {
       const assistantId = newId();
       setError(null);
       setStatus('waiting');
-      setMessages([...history, { id: assistantId, role: 'assistant', content: '' }]);
+      setMessages([
+        ...history,
+        { id: assistantId, role: 'assistant', content: '', model: model ?? undefined },
+      ]);
 
       const outcome = await streamChat(
         history.map(({ role, content }) => ({ role, content })),
@@ -110,7 +113,7 @@ export function useChat(): UseChat {
 
       if (outcome.status === 'error') setError(outcome.error);
     },
-    [flush],
+    [flush, model],
   );
 
   const send = useCallback(

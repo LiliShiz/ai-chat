@@ -30,11 +30,24 @@ jobs:
       # собиралось-то всё успешно.
       - name: Smoke — прод-режим отдаёт фронт и /api/health
         run: |
+          set -euo pipefail
           OPENROUTER_API_KEY=ci-smoke-not-a-real-key npm start &
-          for i in $(seq 1 30); do
+          # PID, а не `kill %1`: управление задачами в неинтерактивном
+          # bash работает не везде, и его падение покрасило бы шаг
+          # ложно — уже после того, как проверки прошли.
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 30); do
             curl -sf http://localhost:8787/api/health >/dev/null && break
             sleep 1
           done
+
           curl -sf http://localhost:8787/api/health | grep -q '"ok":true'
           curl -sf http://localhost:8787/ | grep -qi '<div id="root">'
-          kill %1
+          # Проверяем и саму суть: прокси жив и валидирует запрос.
+          # Без ключа апстрима в CI дальше валидации не уйти, но ровно
+          # эта ветка и ловит «сервер поднялся, а /api/chat отвалился».
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            http://localhost:8787/api/chat \
+            -H 'Content-Type: application/json' -d '{"messages":[]}')" = "400"

@@ -227,6 +227,35 @@ describe('остановка', () => {
     await waitFor(() => expect(result.current.status).toBe('idle'));
   });
 
+  it('после «Стоп» ДО первого токена в модель не уходит пустая реплика', async () => {
+    // Сценарий: начал генерацию, сразу передумал, спросил другое.
+    // Пустой ответ ассистента ещё висит в ленте — продолжение
+    // прерванного запуска его не успело вырезать. Если отдать историю
+    // как есть, сервер законно ответит «Сообщение не может быть
+    // пустым», и человек увидит ошибку на нормальное действие.
+    //
+    // Родственный тест выше проверяет случай с НЕпустым ответом —
+    // именно поэтому этот сценарий и жил незамеченным.
+    const first = controllable();
+
+    const { result } = renderHook(() => useChat(MODEL));
+    await act(async () => {
+      result.current.send('первый');
+      await first.started;
+    });
+
+    const second = controllable();
+    await act(async () => {
+      result.current.stop();
+      result.current.send('второй');
+      await second.started;
+    });
+
+    const [history] = streamChat.mock.calls[1] as [{ role: string; content: string }[]];
+    expect(history.every((m) => m.content.trim() !== '')).toBe(true);
+    expect(history.map((m) => m.content)).toEqual(['первый', 'второй']);
+  });
+
   it('хвост прерванного потока не утекает в следующее сообщение', async () => {
     const first = controllable();
 

@@ -45,7 +45,17 @@ export function useChat(model: string | null): UseChat {
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const run = useCallback(
-    async (history: Message[]) => {
+    async (rawHistory: Message[]) => {
+      // Выбрасываем пустые сообщения.
+      //
+      // Сценарий: пользователь начал генерацию, сразу нажал «Стоп» и
+      // спросил другое. Продолжение прерванного запуска, которое
+      // вырезает пустой ответ из ленты, к этому моменту ещё не
+      // отработало — и в модель уезжала история с пустой репликой
+      // ассистента посередине. Сервер её законно отклонял, а человек
+      // видел «Запрос не принят» на совершенно нормальное действие.
+      const history = rawHistory.filter((m) => m.content.trim() !== '');
+
       const controller = new AbortController();
       abortRef.current = controller;
 

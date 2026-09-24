@@ -21,10 +21,15 @@
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w web",
     "start": "npm run start -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
-    "test": "npm run test -w server && npm run test -w web"
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web && tsc --noEmit -p tsconfig.e2e.json",
+    "test": "npm run test -w server && npm run test -w web",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:server": "cross-env OPENROUTER_BASE_URL=http://localhost:8788 OPENROUTER_API_KEY=e2e-mock FIRST_TOKEN_TIMEOUT_MS=4000 IDLE_TIMEOUT_MS=4000 npm run dev -w server",
+    "e2e:stack": "concurrently -n mock,server,web -c yellow,cyan,magenta \"npm:dev:mock:upstream\" \"npm:e2e:server\" \"npm:dev:web\""
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3"
   }

@@ -65,10 +65,14 @@ describe('чтение потока на клиенте', () => {
   it('разбирает ошибку, пришедшую HTTP-статусом', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(JSON.stringify({ code: 'config', message: 'Нет ключа', retryable: false }), {
-          status: 503,
-        }),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ code: 'config', message: 'Нет ключа', retryable: false }),
+            {
+              status: 503,
+            },
+          ),
       ),
     );
 
@@ -81,11 +85,17 @@ describe('чтение потока на клиенте', () => {
   });
 
   it('переживает статус без внятного тела', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>502</html>', { status: 502 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<html>502</html>', { status: 502 })),
+    );
 
     const outcome = await streamChat(ASK, signal(), () => {});
 
-    expect(outcome).toMatchObject({ status: 'error', error: { code: 'upstream', retryable: true } });
+    expect(outcome).toMatchObject({
+      status: 'error',
+      error: { code: 'upstream', retryable: true },
+    });
   });
 
   it('при выключенной сети не ходит в сеть вовсе', async () => {

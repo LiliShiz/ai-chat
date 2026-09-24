@@ -58,6 +58,38 @@ describe('разбор потока', () => {
   });
 });
 
+describe('что именно уходит в апстрим', () => {
+  it('запрос собран правильно: модель, stream, системный промпт, история', async () => {
+    // Слепая зона, пока её не проверишь: моки обычно выбрасывают
+    // тело запроса, и ошибка вида «забыли stream: true» проходит
+    // мимо всех тестов — стриминг просто перестаёт быть стримингом.
+    const fetchMock = vi.fn(async () => new Response('', { status: 500 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const history: ChatMessage[] = [
+      { role: 'user', content: 'первый' },
+      { role: 'assistant', content: 'ответ' },
+      { role: 'user', content: 'второй' },
+    ];
+    for await (const _ of streamCompletion(history, new AbortController().signal)) void _;
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://upstream.test/v1/chat/completions');
+
+    const body = JSON.parse(String(init.body));
+    expect(body.model).toBe('test/model:free');
+    expect(body.stream).toBe(true);
+
+    // Системный промпт задаёт сервер и ставит его первым.
+    expect(body.messages[0].role).toBe('system');
+    expect(body.messages.slice(1)).toEqual(history);
+
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      'Bearer test-key-not-real',
+    );
+  });
+});
+
 describe('ошибки апстрима', () => {
   it('429 до начала генерации превращается в rate_limit с отсчётом', async () => {
     mockUpstream(null, {
@@ -75,7 +107,10 @@ describe('ошибки апстрима', () => {
   });
 
   it('не выдаёт наружу, что проблема в ключе', async () => {
-    mockUpstream(null, { status: 401, body: '{"error":{"message":"No auth credentials found"}}' });
+    mockUpstream(null, {
+      status: 401,
+      body: '{"error":{"message":"No auth credentials found"}}',
+    });
 
     const [event] = await collect();
 
@@ -105,7 +140,10 @@ describe('ошибки апстрима', () => {
     mockUpstream(null, { status: 502, body: '' });
 
     const [event] = await collect();
-    expect(event).toMatchObject({ type: 'error', error: { code: 'upstream', retryable: true } });
+    expect(event).toMatchObject({
+      type: 'error',
+      error: { code: 'upstream', retryable: true },
+    });
   });
 });
 
@@ -194,23 +232,85 @@ describe('отмена и таймауты', () => {
     expect(events.at(-1)).toMatchObject({ type: 'error', error: { code: 'upstream' } });
   });
 
-  it('рвёт соединение с апстримом, когда клиент отвалился', async () => {
+  it('рвёт соединение с апстримом ПОКА идёт генерация, а не при выходе', async () => {
     // Иначе модель продолжает генерировать в пустоту и жечь квоту.
-    const controller = new AbortController();
+    //
+    // Тонкость, из-за которой прошлая версия этого теста была
+    // вакуумной: в конце `streamCompletion` стоит безусловный
+    // `finally { upstream.abort() }`, поэтому проверка «сигнал
+    // апстрима аборчен» после окончания итерации истинна всегда —
+    // даже если ретрансляцию отмены убрать совсем.
+    //
+    // Поэтому здесь генератор НЕ дочитывается: берём один кадр,
+    // отменяем клиента и проверяем апстрим, не выходя из итерации.
+    const client = new AbortController();
     let upstreamSignal: AbortSignal | undefined;
 
     vi.stubGlobal(
       'fetch',
-      vi.fn((_url: string, init?: RequestInit) => {
+      vi.fn(async (_url: string, init?: RequestInit) => {
         upstreamSignal = init?.signal ?? undefined;
-        controller.abort();
-        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+        const encoder = new TextEncoder();
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode(frame({ choices: [{ delta: { content: 'раз' } }] })),
+              );
+              // Тело остаётся открытым: закрывать его — значит снова
+              // дать `finally` сработать самому.
+            },
+          }),
+          { status: 200 },
+        );
       }),
     );
 
-    await collect(controller.signal);
+    const events = streamCompletion(ASK, client.signal);
+    const first = await events.next();
+    expect(first.value).toEqual({ type: 'delta', text: 'раз' });
 
-    expect(upstreamSignal?.aborted).toBe(true);
+    expect(upstreamSignal!.aborted).toBe(false);
+
+    client.abort();
+    // Ретрансляция стоит на слушателе abort — он синхронный, но дадим
+    // очереди микрозадач провернуться, чтобы не зависеть от порядка.
+    await Promise.resolve();
+
+    expect(upstreamSignal!.aborted).toBe(true);
+
+    await events.return(undefined as never);
+  });
+
+  it('замолчавший ПОСРЕДИ ответа апстрим ловится idle-таймером', async () => {
+    // Вторая половина фичи двух таймаутов: после первого токена
+    // соединение считается живым, но пауза между чанками всё равно
+    // ограничена — и ограничена другим, более коротким сроком.
+    vi.useFakeTimers();
+
+    const encoder = new TextEncoder();
+    mockUpstreamStream((controller) => {
+      controller.enqueue(encoder.encode(frame({ choices: [{ delta: { content: 'начал' } }] })));
+      // Дальше тишина: тело открыто, данных нет.
+    });
+
+    const events: ServerEvent[] = [];
+    const done = (async () => {
+      for await (const event of streamCompletion(ASK, new AbortController().signal)) {
+        events.push(event);
+      }
+    })();
+
+    // Ждём дольше idle-таймера (30 с), но меньше таймера первого
+    // токена (45 с) — так проверяется, что сработал именно idle.
+    await vi.advanceTimersByTimeAsync(31_000);
+    await done;
+
+    expect(text(events)).toBe('начал');
+    expect(events.at(-1)).toMatchObject({
+      type: 'error',
+      error: { code: 'timeout', message: expect.stringMatching(/замолчала/i) },
+    });
   });
 
   it('молчащий апстрим ловится сторожевым таймером', async () => {
@@ -240,6 +340,32 @@ describe('отмена и таймауты', () => {
 
 function frame(payload: unknown): string {
   return `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+/**
+ * Апстрим с телом, которым управляет тест: что положили — то и
+ * пришло, а закрывать поток никто не обязан. Нужен для сценариев,
+ * где важна именно тишина после данных.
+ */
+function mockUpstreamStream(
+  fill: (controller: ReadableStreamDefaultController<Uint8Array>) => void,
+) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          fill(controller);
+          init?.signal?.addEventListener(
+            'abort',
+            () => controller.error(init.signal?.reason ?? new Error('aborted')),
+            { once: true },
+          );
+        },
+      });
+      return new Response(body, { status: 200 });
+    }),
+  );
 }
 
 function text(events: ServerEvent[]): string {

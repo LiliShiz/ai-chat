@@ -7,18 +7,19 @@
  */
 
 export type ErrorCode =
-  | 'rate_limit'
-  | 'timeout'
-  | 'upstream'
-  | 'bad_request'
-  | 'config'
-  | 'offline'
-  | 'unknown';
+  'rate_limit' | 'timeout' | 'upstream' | 'bad_request' | 'config' | 'offline' | 'unknown';
 
 export interface ChatError {
   code: ErrorCode;
   message: string;
   retryAfterSec?: number;
+  /**
+   * Момент, когда повтор снова имеет смысл (epoch, мс).
+   * Проставляется при получении ошибки: абсолютное время не врёт,
+   * если вкладку свернули и таймеры притормозили, а заодно избавляет
+   * интерфейс от вычисления «сейчас» во время рендера.
+   */
+  retryAt?: number;
   retryable: boolean;
 }
 

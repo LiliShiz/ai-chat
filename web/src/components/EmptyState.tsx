@@ -23,8 +23,8 @@ export function EmptyState({ model, onPick }: Props) {
       </h2>
 
       <p className="empty__lead">
-        Ответ появляется по мере генерации — читать можно, не дожидаясь конца.
-        Прервать в любой момент: кнопка «Стоп» или клавиша <kbd>Esc</kbd>.
+        Ответ появляется по мере генерации — читать можно, не дожидаясь конца. Прервать в любой
+        момент: кнопка «Стоп» или клавиша <kbd>Esc</kbd>.
       </p>
 
       <p className="empty__label" id="suggestions-label">
@@ -41,11 +41,7 @@ export function EmptyState({ model, onPick }: Props) {
         ))}
       </ul>
 
-      {model && (
-        <p className="empty__model">
-          Отвечает {model}
-        </p>
-      )}
+      {model && <p className="empty__model">Отвечает {model}</p>}
     </section>
   );
 }

@@ -21,6 +21,8 @@ jobs:
       # иначе «на моей машине работает» рано или поздно случится.
       - run: npm ci
 
+      - run: npm run lint
+      - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
@@ -55,8 +57,24 @@ jobs:
           echo '— health'
           curl -sf http://localhost:8787/api/health | grep -q '"ok":true'
 
-          echo '— собранный фронт с того же origin'
-          curl -sf http://localhost:8787/ | grep -qi '<div id="root">'
+          echo '— собранный фронт, а не исходный index.html'
+          # Грепать <div id="root"> бессмысленно: эта строка есть и в
+          # исходном web/index.html, а SPA-фолбэк отдаёт 200 на любой
+          # путь — смоук остался бы зелёным вообще без сборки.
+          # Проверяем ссылку на хешированный ассет: она появляется
+          # только после vite build.
+          curl -sf http://localhost:8787/ -o /tmp/index.html
+          grep -qE '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/index.html
+          ASSET=$(grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/index.html | head -1)
+          curl -sf "http://localhost:8787${ASSET}" -o /tmp/bundle.js
+          test -s /tmp/bundle.js
+
+          echo '— ключа нет в бандле'
+          ! grep -qE 'sk-or-v1-[a-f0-9]{16}' /tmp/bundle.js
+
+          echo '— неизвестный /api отдаёт JSON-404, а не HTML'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8787/api/nope)" = "404"
+          curl -s http://localhost:8787/api/nope | grep -q '"code"'
 
           echo '— /api/chat действительно стримит'
           # Пишем в файл, а не в пайп к grep: grep -q закрывает пайп на

@@ -15,7 +15,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('пустое состояние объясняет, что это и с чего начать', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: /разговор с языковой моделью/i })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: /разговор с языковой моделью/i }),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: /debounce/i })).toBeVisible();
   // Модель подписана: человек должен видеть, кто ему отвечает.
   await expect(page.getByText(/отвечает/i)).toBeVisible();
@@ -167,13 +169,18 @@ test('очистка стирает переписку и возвращает �
 
   await page.getByRole('button', { name: /^очистить$/i }).click();
 
-  await expect(page.getByRole('heading', { name: /разговор с языковой моделью/i })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: /разговор с языковой моделью/i }),
+  ).toBeVisible();
   await page.reload();
   await expect(page.locator('.message')).toHaveCount(0);
 });
 
 test('ключ OpenRouter не появляется в запросах со страницы', async ({ page }) => {
   const external: string[] = [];
+  // Слушатель вешается ДО навигации: иначе загрузка бандла не
+  // наблюдается вовсе, и ключ, вшитый в бандл на сборке, прошёл бы
+  // мимо проверки.
   page.on('request', (request) => {
     const url = request.url();
     if (!url.startsWith('http://localhost:5173')) external.push(url);
@@ -181,6 +188,7 @@ test('ключ OpenRouter не появляется в запросах со с�
     if (auth) external.push(`auth-header: ${url}`);
   });
 
+  await page.reload();
   await composer(page).fill('проверка сети');
   await composer(page).press('Enter');
   await expect(answer(page)).not.toBeEmpty();
@@ -188,17 +196,42 @@ test('ключ OpenRouter не появляется в запросах со с�
   // Ни одного обращения наружу и ни одного заголовка авторизации:
   // ключ живёт на сервере и в браузер не попадает.
   expect(external).toEqual([]);
+
+  // И отдельно — ключа нет в том, что страница о себе отдаёт:
+  // ни в разметке, ни в загруженных скриптах.
+  const leaked = await page.evaluate(async () => {
+    const scripts = Array.from(
+      document.querySelectorAll('script[src]'),
+      (s) => (s as HTMLScriptElement).src,
+    );
+    const bodies = await Promise.all(
+      scripts.map((src) =>
+        fetch(src)
+          .then((r) => r.text())
+          .catch(() => ''),
+      ),
+    );
+    return [document.documentElement.outerHTML, ...bodies].some((text) =>
+      /sk-or-v1-[a-f0-9]{16}/i.test(text),
+    );
+  });
+  expect(leaked).toBe(false);
 });
 
 test('тема переключается и переживает перезагрузку', async ({ page }) => {
-  const dark = page.getByRole('button', { name: /тёмная тема/i });
+  const dark = page.getByRole('radio', { name: /тёмная тема/i });
   await dark.click();
-  await expect(dark).toHaveAttribute('aria-pressed', 'true');
+  await expect(dark).toBeChecked();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-  await page.getByRole('button', { name: /как в системе/i }).click();
+  // Стрелка внутри радиогруппы — так это и работает у нативных
+  // радиокнопок, и так этим пользуются с клавиатуры.
+  await dark.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('radio', { name: /светлая тема/i })).toBeChecked();
+  await page.getByRole('radio', { name: /как в системе/i }).click();
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark');
 });

@@ -17,18 +17,25 @@
 :root {
   color-scheme: light dark;
 
+  /* Кольцо фокуса объявлено переменной, чтобы элементы с собственной
+     тенью могли дорисовать его рядом, а не потерять. Раньше .jump со
+     своей тенью перебивала общее правило :focus-visible просто
+     потому, что стояла ниже по файлу — и единственная кнопка в
+     интерфейсе оставалась без видимого фокуса. */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
   /* бумага и чернила */
-  --bg:        light-dark(#faf8f4, #12110f);
-  --surface:   light-dark(#f2eee5, #1a1815);
-  --fg:        light-dark(#1d1b16, #e6e2da);
-  --dim:       light-dark(#6e685c, #97907f);
-  --line:      light-dark(#e2dccf, #292620);
+  --bg: light-dark(#faf8f4, #12110f);
+  --surface: light-dark(#f2eee5, #1a1815);
+  --fg: light-dark(#1d1b16, #e6e2da);
+  --dim: light-dark(#6e685c, #97907f);
+  --line: light-dark(#e2dccf, #292620);
   --line-soft: light-dark(#ece7dc, #201e19);
 
   /* кирпич — единственный акцент */
-  --accent:    light-dark(#8c2f1f, #dd7a62);
+  --accent: light-dark(#8c2f1f, #dd7a62);
   --accent-fg: light-dark(#fdf9f3, #16130f);
-  --user-bg:   light-dark(#efe9dc, #201d18);
+  --user-bg: light-dark(#efe9dc, #201d18);
 
   --font-serif: 'Literata Variable', Literata, Georgia, 'Times New Roman', serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -40,14 +47,24 @@
 }
 
 /* Переключатель темы переопределяет системную настройку. */
-:root[data-theme='light'] { color-scheme: light }
-:root[data-theme='dark']  { color-scheme: dark }
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
 
 *,
 *::before,
-*::after { box-sizing: border-box }
+*::after {
+  box-sizing: border-box;
+}
 
-html, body, #root { height: 100% }
+html,
+body,
+#root {
+  height: 100%;
+}
 
 body {
   margin: 0;
@@ -71,17 +88,21 @@ body {
    клике мышью. Подробности — в README.
    ───────────────────────────────────────────────────────────── */
 
-:where(button, textarea, input, a, [tabindex]):focus { outline: none }
+:where(button, textarea, input, a, [tabindex]):focus {
+  outline: none;
+}
 
 :where(button, textarea, input, a, [tabindex]):focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  box-shadow: var(--focus-ring);
   border-radius: 2px;
 }
 
 @media (prefers-contrast: more) {
   :where(button, textarea, input, a, [tabindex]):focus-visible {
-    box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px currentColor;
+    box-shadow:
+      0 0 0 2px var(--bg),
+      0 0 0 5px currentColor;
   }
 }
 
@@ -100,8 +121,10 @@ body {
 
 .visually-hidden {
   position: absolute;
-  width: 1px; height: 1px;
-  margin: -1px; padding: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
@@ -124,7 +147,9 @@ body {
 }
 
 @media (min-width: 900px) {
-  .app { border-inline: 1px solid var(--line-soft) }
+  .app {
+    border-inline: 1px solid var(--line-soft);
+  }
 }
 
 .header {
@@ -171,9 +196,17 @@ body {
    Переносим статус на вторую строку целиком — он остаётся читаемым,
    а верхняя строка держит высоту. */
 @media (max-width: 560px) {
-  .header { flex-wrap: wrap; row-gap: 6px }
-  .header__status { order: 3; flex-basis: 100% }
-  .header__title { font-size: 0.98rem }
+  .header {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .header__status {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .header__title {
+    font-size: 0.98rem;
+  }
 }
 
 .main {
@@ -208,7 +241,9 @@ body {
   overflow-anchor: none;
 }
 
-.messages__end { height: 1px }
+.messages__end {
+  height: 1px;
+}
 
 .message {
   display: flex;
@@ -257,9 +292,15 @@ body {
   overflow-wrap: break-word;
 }
 
-.message__body > :first-child { margin-top: 0 }
-.message__body > :last-child { margin-bottom: 0 }
-.message__body p { margin: 0 0 16px }
+.message__body > :first-child {
+  margin-top: 0;
+}
+.message__body > :last-child {
+  margin-bottom: 0;
+}
+.message__body p {
+  margin: 0 0 16px;
+}
 
 .message__body :is(h1, h2, h3, h4) {
   font-family: var(--font-mono);
@@ -271,9 +312,16 @@ body {
   margin: 28px 0 11px;
 }
 
-.message__body :is(ul, ol) { padding-left: 1.4em; margin: 0 0 18px }
-.message__body li { margin-bottom: 9px }
-.message__body li::marker { color: var(--accent) }
+.message__body :is(ul, ol) {
+  padding-left: 1.4em;
+  margin: 0 0 18px;
+}
+.message__body li {
+  margin-bottom: 9px;
+}
+.message__body li::marker {
+  color: var(--accent);
+}
 
 .message__body blockquote {
   margin: 20px 0;
@@ -283,7 +331,10 @@ body {
   font-style: italic;
 }
 
-.message__body a { color: var(--accent); text-underline-offset: 2px }
+.message__body a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
 
 .message__body :not(pre) > code {
   font-family: var(--font-mono);
@@ -337,10 +388,19 @@ body {
   animation: blink 1.1s steps(2, start) infinite;
 }
 
-@keyframes blink { 50% { opacity: 0 } }
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
 
 /* Ожидание первого токена: три точки, набегающие волной. */
-.pending { display: inline-flex; gap: 5px; align-items: center; height: 1.6em }
+.pending {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  height: 1.6em;
+}
 
 .pending i {
   width: 5px;
@@ -351,12 +411,24 @@ body {
   animation: wave 1.25s ease-in-out infinite;
 }
 
-.pending i:nth-child(2) { animation-delay: 0.16s }
-.pending i:nth-child(3) { animation-delay: 0.32s }
+.pending i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.pending i:nth-child(3) {
+  animation-delay: 0.32s;
+}
 
 @keyframes wave {
-  0%, 60%, 100% { opacity: 0.28; transform: translateY(0) }
-  30% { opacity: 1; transform: translateY(-3px) }
+  0%,
+  60%,
+  100% {
+    opacity: 0.28;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -364,7 +436,10 @@ body {
     animation: none;
     opacity: 0.55;
   }
-  .pending i { animation: none; opacity: 0.55 }
+  .pending i {
+    animation: none;
+    opacity: 0.55;
+  }
 }
 
 /* ─────────────────────── ДЕЙСТВИЯ НАД ОТВЕТОМ ─────────────────────── */
@@ -382,10 +457,14 @@ body {
 }
 
 .message:hover .message__tools,
-.message:focus-within .message__tools { opacity: 1 }
+.message:focus-within .message__tools {
+  opacity: 1;
+}
 
 @media (hover: none) {
-  .message__tools { opacity: 1 }
+  .message__tools {
+    opacity: 1;
+  }
 }
 
 .tool {
@@ -401,8 +480,14 @@ body {
   border-bottom: 1px solid transparent;
 }
 
-.tool:hover { color: var(--accent); border-bottom-color: var(--accent) }
-.tool[aria-disabled='true'] { opacity: 0.4; cursor: default }
+.tool:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tool[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
 
 /* ──────────────────────── БЛОК КОДА ──────────────────────── */
 
@@ -442,11 +527,20 @@ body {
 }
 
 .code:hover .code__copy,
-.code__copy:focus-visible { opacity: 1 }
+.code__copy:focus-visible {
+  opacity: 1;
+}
 
-@media (hover: none) { .code__copy { opacity: 1 } }
+@media (hover: none) {
+  .code__copy {
+    opacity: 1;
+  }
+}
 
-.code__copy:hover { color: var(--accent); border-color: var(--line) }
+.code__copy:hover {
+  color: var(--accent);
+  border-color: var(--line);
+}
 
 .message__body pre {
   margin: 0;
@@ -469,13 +563,41 @@ body {
 /* Подсветка: приглушённая, в палитре темы. Яркие «радужные»
    темы в серифном интерфейсе выглядят инородно и часто
    проваливают контраст. */
-.hljs-comment, .hljs-quote { color: var(--dim); font-style: italic }
-.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type { color: var(--accent) }
-.hljs-string, .hljs-regexp, .hljs-addition { color: light-dark(#3d6b2e, #9ec27f) }
-.hljs-number, .hljs-symbol, .hljs-attr { color: light-dark(#7a4b12, #d7a86a) }
-.hljs-title, .hljs-name, .hljs-section { color: light-dark(#1f4a72, #8fb6d9) }
-.hljs-built_in, .hljs-variable, .hljs-params { color: inherit }
-.hljs-meta, .hljs-deletion { color: var(--dim) }
+.hljs-comment,
+.hljs-quote {
+  color: var(--dim);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-type {
+  color: var(--accent);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: light-dark(#3d6b2e, #9ec27f);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-attr {
+  color: light-dark(#7a4b12, #d7a86a);
+}
+.hljs-title,
+.hljs-name,
+.hljs-section {
+  color: light-dark(#1f4a72, #8fb6d9);
+}
+.hljs-built_in,
+.hljs-variable,
+.hljs-params {
+  color: inherit;
+}
+.hljs-meta,
+.hljs-deletion {
+  color: var(--dim);
+}
 
 /* ─────────────────────── ПУСТОЕ СОСТОЯНИЕ ─────────────────────── */
 
@@ -544,12 +666,19 @@ body {
   content: '→';
   color: var(--accent);
   opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
   transform: translateX(-4px);
 }
 
-.chip:hover { color: var(--accent) }
-.chip:hover::before { opacity: 1; transform: none }
+.chip:hover {
+  color: var(--accent);
+}
+.chip:hover::before {
+  opacity: 1;
+  transform: none;
+}
 
 .empty__model {
   margin: 0;
@@ -590,7 +719,9 @@ body {
   resize: none;
 }
 
-.composer__input::placeholder { color: var(--dim) }
+.composer__input::placeholder {
+  color: var(--dim);
+}
 
 .composer__hint {
   grid-area: hint;
@@ -657,7 +788,10 @@ body {
   transition: opacity 0.15s ease;
 }
 
-.button:disabled { opacity: 0.4; cursor: not-allowed }
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .button--stop {
   background: none;
@@ -674,7 +808,10 @@ body {
   font-size: 0.6rem;
 }
 
-.button--ghost:hover:not(:disabled) { color: var(--fg); border-color: var(--dim) }
+.button--ghost:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--dim);
+}
 
 /* ──────────────────── ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ ──────────────────── */
 
@@ -686,8 +823,10 @@ body {
 }
 
 .theme__option {
-  min-width: 34px;
-  min-height: 34px;
+  /* 44px — минимальный тач-таргет; раньше здесь было 34, то есть
+     собственный порог из a11y-теста нарушался самой же кнопкой. */
+  min-width: 44px;
+  min-height: 44px;
   display: grid;
   place-items: center;
   border: 0;
@@ -697,15 +836,50 @@ body {
   padding: 0 7px;
 }
 
-.theme__option + .theme__option { border-left: 1px solid var(--line) }
-.theme__option:hover { color: var(--fg) }
+.theme__option + .theme__option {
+  border-left: 1px solid var(--line);
+}
+.theme__option:hover {
+  color: var(--fg);
+}
 
-.theme__option[aria-pressed='true'] {
+.theme__option[aria-checked='true'] {
   background: var(--accent);
   color: var(--accent-fg);
 }
 
-.theme__option svg { width: 15px; height: 15px; display: block }
+.theme__option svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+/* На узком экране всё, что нажимают пальцем, дорастает до 44px.
+   На десктопе этого делать незачем: мышь попадает и в 22px, а
+   раздутые действия под ответом ломают спокойный ритм полосы. */
+@media (max-width: 560px), (pointer: coarse) {
+  .button--ghost {
+    min-height: 44px;
+    padding-inline: 16px;
+  }
+
+  .tool {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .message__tools {
+    gap: 20px;
+  }
+
+  .code__copy,
+  .code__lang {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
 
 /* ───────────────────── КНОПКА «ВНИЗ» ───────────────────── */
 
@@ -714,7 +888,8 @@ body {
   left: 50%;
   bottom: 16px;
   transform: translateX(-50%);
-  min-height: 34px;
+  /* 44px — тот же минимальный тач-таргет, что у остальных кнопок */
+  min-height: 44px;
   padding: 7px 15px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -725,18 +900,32 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 2px 14px light-dark(rgb(40 30 15 / 12%), rgb(0 0 0 / 55%));
+  --shadow-jump: 0 2px 14px light-dark(rgb(40 30 15 / 12%), rgb(0 0 0 / 55%));
+  box-shadow: var(--shadow-jump);
   animation: rise 0.18s ease;
 }
 
-.jump:hover { color: var(--accent); border-color: var(--accent) }
+.jump:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Своя тень остаётся, кольцо добавляется — иначе одно затирает другое */
+.jump:focus-visible {
+  box-shadow: var(--shadow-jump), var(--focus-ring);
+}
 
 @keyframes rise {
-  from { opacity: 0; transform: translate(-50%, 8px) }
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jump { animation: none }
+  .jump {
+    animation: none;
+  }
 }
 
 /* ──────────────────────────── ОШИБКА ──────────────────────────── */
@@ -752,7 +941,10 @@ body {
   max-width: var(--measure);
 }
 
-.notice__text { flex: 1; min-width: 0 }
+.notice__text {
+  flex: 1;
+  min-width: 0;
+}
 
 .notice__title {
   display: block;
@@ -770,5 +962,8 @@ body {
 }
 
 @media (max-width: 560px) {
-  .notice { flex-direction: column; align-items: stretch }
+  .notice {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

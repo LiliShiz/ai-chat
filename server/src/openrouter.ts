@@ -161,10 +161,16 @@ type ParsedFrame =
   | { kind: 'delta'; text: string; finishReason?: 'stop' | 'length' | 'unknown' }
   | { kind: 'error'; error: ChatErrorPayload };
 
+/** Форма кадра апстрима — ровно то, что мы из него читаем. */
+interface UpstreamFrame {
+  error?: { code?: number | string; message?: string };
+  choices?: { delta?: { content?: string }; finish_reason?: string | null }[];
+}
+
 function parseFrame(data: string): ParsedFrame | null {
-  let json: any;
+  let json: UpstreamFrame;
   try {
-    json = JSON.parse(data);
+    json = JSON.parse(data) as UpstreamFrame;
   } catch {
     return null; // Битый кадр — пропускаем, ломать стрим из-за него незачем.
   }

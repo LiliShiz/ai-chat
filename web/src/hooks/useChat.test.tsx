@@ -32,8 +32,9 @@ beforeEach(() => {
   sessionStorage.clear();
   streamChat.mockReset();
   // rAF в jsdom не тикает сам — батчинг токенов иначе не выльется в state.
-  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
-    setTimeout(() => cb(0), 0) as unknown as number,
+  vi.stubGlobal(
+    'requestAnimationFrame',
+    (cb: FrameRequestCallback) => setTimeout(() => cb(0), 0) as unknown as number,
   );
   vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
 });
@@ -111,7 +112,9 @@ function controllable() {
         return new Promise<StreamOutcome>((resolve) => {
           finish = resolve;
           // Настоящий streamChat на отмене возвращает 'aborted'.
-          signal.addEventListener('abort', () => resolve({ status: 'aborted' }), { once: true });
+          signal.addEventListener('abort', () => resolve({ status: 'aborted' }), {
+            once: true,
+          });
         });
       },
     );

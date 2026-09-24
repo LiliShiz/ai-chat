@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>B — Редакция</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── B. РЕДАКЦИЯ ────────────────────────────────────────────────
+   Ответ модели набран как статья: антиква, мера 66 знаков,
+   интерлиньяж 1.68. Вся служебная обвязка — моноширинная и тихая.
+   Вместо карточек — тонкие линейки и воздух.
+   ──────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0}
+
+.pane{
+  --bg:#faf8f4; --fg:#1d1b16; --dim:#8a8378; --line:#e6e1d6;
+  --accent:#8c2f1f; --accent-fg:#fdf9f3; --code:#f2eee5; --user:#efe9dc;
+  background:var(--bg); color:var(--fg);
+  font-family:Literata,Georgia,serif;
+}
+.pane--dark{
+  --bg:#12110f; --fg:#e6e2da; --dim:#8b8578; --line:#262420;
+  --accent:#d9705a; --accent-fg:#16130f; --code:#1a1815; --user:#201d18;
+}
+
+.app{display:grid;grid-template-rows:auto 1fr auto;height:760px}
+
+.hdr{display:flex;align-items:baseline;gap:16px;padding:16px 26px;
+     border-bottom:1px solid var(--line)}
+.hdr__brand{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.hdr__meta{flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;
+  color:var(--dim);letter-spacing:.02em}
+
+.feed{margin:0;padding:30px 26px;list-style:none;overflow:auto;
+      display:flex;flex-direction:column;gap:34px}
+
+.msg{display:flex;flex-direction:column;gap:9px;max-width:66ch}
+.msg__who{font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.msg__who em{font-style:normal;opacity:.55}
+
+/* юзер — тихая плашка, реплика в разговоре, а не крик */
+.msg--user{align-self:flex-end;align-items:flex-end;max-width:52ch}
+.msg--user .msg__body{background:var(--user);padding:11px 16px;
+  border-radius:3px;font-size:15px;line-height:1.55}
+
+/* ответ — материал: капитель первой строки, крупный кегль, воздух */
+.msg--bot .msg__body{font-size:16.5px;line-height:1.68}
+.msg--bot .msg__body>p:first-child::first-letter{
+  font-size:1.05em;font-weight:600}
+.msg__body>:first-child{margin-top:0}
+.msg__body>:last-child{margin-bottom:0}
+.msg__body h3{font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  margin:26px 0 10px;font-weight:500}
+.msg__body ol{padding-left:1.4em;margin:0 0 18px}
+.msg__body li{margin-bottom:9px}
+.msg__body li::marker{color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:.85em}
+.msg__body code{font-family:'IBM Plex Mono',monospace;font-size:.86em;
+  background:var(--code);padding:1px 5px;border-radius:3px}
+.msg__body pre{font-family:'IBM Plex Mono',monospace;background:var(--code);
+  padding:16px 18px;border-radius:4px;overflow:auto;font-size:13px;
+  line-height:1.65;margin:20px 0;border-left:2px solid var(--accent)}
+.msg__body pre code{background:none;padding:0;font-size:1em}
+.k{color:var(--accent)}
+
+.msg__tools{display:flex;gap:16px;margin-top:20px;
+  padding-top:14px;border-top:1px solid var(--line)}
+.tool{background:none;border:0;padding:0;cursor:pointer;color:var(--dim);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;border-bottom:1px solid transparent}
+.tool:hover{color:var(--accent);border-bottom-color:var(--accent)}
+
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--accent);
+  vertical-align:text-bottom;margin-left:3px;animation:b 1.1s steps(2) infinite}
+@keyframes b{50%{opacity:0}}
+
+.ftr{border-top:1px solid var(--line);padding:18px 26px}
+.composer{display:flex;gap:14px;align-items:stretch;max-width:66ch}
+.composer__input{flex:1;border:0;border-bottom:1px solid var(--line);
+  padding:10px 2px;color:var(--dim);font-size:16px;font-family:inherit}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:10px 22px;
+  cursor:pointer;border:1px solid var(--accent);background:var(--accent);
+  color:var(--accent-fg);border-radius:3px;letter-spacing:.1em;text-transform:uppercase}
+.btn--ghost{background:none;color:var(--dim);border-color:var(--line);
+  padding:5px 12px;font-size:10.5px}
+.hint{margin:14px 0 0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  color:var(--dim);letter-spacing:.04em}
+kbd{font-family:inherit;border:1px solid var(--line);padding:1px 5px;
+  border-radius:3px;font-size:10px}
+
+.wrap{display:grid;grid-template-columns:1fr 1fr}
+.col{position:relative}
+.tag{position:absolute;top:0;left:0;background:var(--accent);color:var(--accent-fg);
+  font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 9px;
+  letter-spacing:.1em;z-index:2}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col pane"><span class="tag">B · РЕДАКЦИЯ · СВЕТЛАЯ</span><div class="app" id="l"></div></div>
+  <div class="col pane pane--dark"><span class="tag">B · РЕДАКЦИЯ · ТЁМНАЯ</span><div class="app" id="d"></div></div>
+</div>
+<script src="_content.js"></script>
+<script>l.innerHTML=CHAT;d.innerHTML=CHAT;</script>
+</body>
+</html>

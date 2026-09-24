@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>A — Терминал</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ── A. ТЕРМИНАЛ ────────────────────────────────────────────────
+   Моноширинный везде. Прямые углы. Хайрлайны вместо карточек.
+   Акцент — янтарь: теплее «хакерской» зелени и не кричит.
+   ──────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:'JetBrains Mono',ui-monospace,monospace}
+
+.pane{
+  --bg:#f4f3ef; --fg:#15140f; --dim:#6f6b5e; --line:#d6d2c4;
+  --accent:#b46b00; --accent-fg:#fffaf0; --code:#ece8dc;
+  background:var(--bg); color:var(--fg);
+}
+.pane--dark{
+  --bg:#0d0e0c; --fg:#d9dbd2; --dim:#7b8174; --line:#23261f;
+  --accent:#e0a33c; --accent-fg:#14150f; --code:#151713;
+}
+
+.app{display:grid;grid-template-rows:auto 1fr auto;height:760px;
+     border-inline:1px solid var(--line)}
+
+/* шапка — как строка статуса в tmux */
+.hdr{display:flex;align-items:center;gap:14px;padding:11px 18px;
+     border-bottom:1px solid var(--line);font-size:12px;letter-spacing:.04em}
+.hdr__brand{font-weight:700;text-transform:uppercase}
+.hdr__brand::before{content:'▌';color:var(--accent);margin-right:7px}
+.hdr__meta{flex:1;color:var(--dim)}
+.hdr__meta::before{content:'model: ';opacity:.55}
+
+.feed{margin:0;padding:22px 18px;list-style:none;overflow:auto;
+      display:flex;flex-direction:column;gap:26px}
+
+.msg{display:flex;flex-direction:column;gap:7px;max-width:70ch}
+.msg__who{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.msg__who em{font-style:normal;opacity:.6}
+
+/* юзер — единственное залитое пятно на экране */
+.msg--user{align-self:flex-end;align-items:flex-end}
+.msg--user .msg__body{background:var(--accent);color:var(--accent-fg);
+  padding:9px 13px;font-size:13.5px}
+.msg--user .msg__who::after{content:' ▸';color:var(--accent)}
+
+/* ответ — во всю меру, без карточки, с маркером слева */
+.msg--bot .msg__body{border-left:2px solid var(--accent);padding-left:16px;
+  font-size:13.5px;line-height:1.75}
+.msg--bot .msg__who::before{content:'▹ ';color:var(--accent)}
+.msg__body>:first-child{margin-top:0}
+.msg__body>:last-child{margin-bottom:0}
+.msg__body h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--dim);margin:18px 0 8px}
+.msg__body h3::before{content:'── '}
+.msg__body ol{padding-left:1.35em;margin:0 0 14px}
+.msg__body li{margin-bottom:7px}
+.msg__body code{background:var(--code);padding:1px 4px}
+.msg__body pre{background:var(--code);border:1px solid var(--line);
+  padding:12px 14px;overflow:auto;font-size:12.5px;line-height:1.6;margin:14px 0}
+.msg__body pre code{background:none;padding:0}
+.k{color:var(--accent)}
+
+.msg__tools{display:flex;gap:8px;margin-top:14px}
+.tool{background:none;border:1px solid var(--line);color:var(--dim);
+  font:inherit;font-size:11px;padding:4px 9px;cursor:pointer}
+.tool:hover{border-color:var(--accent);color:var(--accent)}
+.tool::before{content:'[ ';opacity:.5}
+.tool::after{content:' ]';opacity:.5}
+
+.caret{display:inline-block;width:.6em;height:1.05em;background:var(--accent);
+  vertical-align:text-bottom;margin-left:3px;animation:b 1s steps(2) infinite}
+@keyframes b{50%{opacity:0}}
+
+.ftr{border-top:1px solid var(--line);padding:14px 18px}
+.composer{display:flex;gap:10px;align-items:stretch}
+.composer__input{flex:1;border:1px solid var(--line);padding:11px 13px;
+  color:var(--dim);font-size:13.5px;background:var(--code)}
+.composer__input::before{content:'$ ';color:var(--accent)}
+.btn{font:inherit;font-size:12.5px;padding:11px 20px;cursor:pointer;
+  border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);
+  text-transform:uppercase;letter-spacing:.07em;font-weight:500}
+.btn--ghost{background:none;color:var(--dim);border-color:var(--line);
+  padding:5px 11px;font-size:11px}
+.hint{margin:11px 0 0;font-size:10.5px;color:var(--dim);letter-spacing:.03em}
+kbd{border:1px solid var(--line);padding:1px 5px;font-size:10px}
+
+.wrap{display:grid;grid-template-columns:1fr 1fr}
+.tag{position:absolute;top:0;left:0;background:var(--accent);color:var(--accent-fg);
+  font-size:10px;padding:3px 9px;letter-spacing:.1em;z-index:2}
+.col{position:relative}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col pane"><span class="tag">A · ТЕРМИНАЛ · СВЕТЛАЯ</span><div class="app" id="l"></div></div>
+  <div class="col pane pane--dark"><span class="tag">A · ТЕРМИНАЛ · ТЁМНАЯ</span><div class="app" id="d"></div></div>
+</div>
+<script src="_content.js"></script>
+<script>l.innerHTML=CHAT;d.innerHTML=CHAT;</script>
+</body>
+</html>

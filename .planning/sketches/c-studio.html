@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>C — Студия</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* ── C. СТУДИЯ ──────────────────────────────────────────────────
+   Тёплые нейтральные, мягкая градиентная подложка, слоистая
+   глубина, скругления. Современный SaaS, но теплее и мягче,
+   чем серо-синий ChatGPT.
+   ──────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif}
+
+.pane{
+  --bg:#fbf9f8; --surface:#fff; --fg:#1b1a19; --dim:#7d7873; --line:#eae5e1;
+  --accent:#6b4bd6; --accent2:#e0725c; --accent-fg:#fff; --code:#f5f2f0;
+  --shadow:0 1px 2px rgba(30,20,10,.05),0 8px 24px -12px rgba(30,20,10,.14);
+  background:var(--bg); color:var(--fg);
+}
+.pane--dark{
+  --bg:#141316; --surface:#1c1b20; --fg:#eceaef; --dim:#928d99; --line:#2a2830;
+  --accent:#a48bff; --accent2:#f0907a; --accent-fg:#16141a; --code:#232128;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+}
+
+.app{position:relative;display:grid;grid-template-rows:auto 1fr auto;height:760px;overflow:hidden}
+/* градиентная подложка — единственный «эффект», живёт под контентом */
+.app::before{content:'';position:absolute;inset:-30% -10% auto;height:70%;
+  background:radial-gradient(60% 60% at 25% 0%,color-mix(in oklab,var(--accent) 22%,transparent),transparent 70%),
+             radial-gradient(50% 50% at 80% 20%,color-mix(in oklab,var(--accent2) 18%,transparent),transparent 70%);
+  filter:blur(30px);pointer-events:none}
+
+.hdr{position:relative;display:flex;align-items:center;gap:14px;padding:14px 22px}
+.hdr__brand{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.hdr__brand::before{content:'';display:inline-block;width:9px;height:9px;
+  border-radius:50%;margin-right:9px;vertical-align:1px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 18%,transparent)}
+.hdr__meta{flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim)}
+
+.feed{position:relative;margin:0;padding:18px 22px 24px;list-style:none;overflow:auto;
+      display:flex;flex-direction:column;gap:22px}
+
+.msg{display:flex;flex-direction:column;gap:6px;max-width:68ch}
+.msg__who{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--dim);font-weight:500}
+.msg__who em{font-style:normal;opacity:.55;font-family:'JetBrains Mono',monospace;
+  text-transform:none;letter-spacing:0}
+
+.msg--user{align-self:flex-end;align-items:flex-end;max-width:54ch}
+.msg--user .msg__body{background:linear-gradient(135deg,var(--accent),color-mix(in oklab,var(--accent) 70%,var(--accent2)));
+  color:var(--accent-fg);padding:11px 16px;border-radius:16px 16px 5px 16px;
+  font-size:14.5px;line-height:1.55;box-shadow:var(--shadow)}
+
+.msg--bot .msg__body{background:var(--surface);border:1px solid var(--line);
+  border-radius:16px 16px 16px 5px;padding:16px 20px;font-size:14.5px;
+  line-height:1.65;box-shadow:var(--shadow)}
+.msg__body>:first-child{margin-top:0}
+.msg__body>:last-child{margin-bottom:0}
+.msg__body h3{font-size:12.5px;font-weight:600;margin:20px 0 9px;
+  color:var(--accent)}
+.msg__body ol{padding-left:1.3em;margin:0 0 15px}
+.msg__body li{margin-bottom:8px}
+.msg__body li::marker{color:var(--accent);font-weight:600}
+.msg__body code{font-family:'JetBrains Mono',monospace;font-size:.85em;
+  background:var(--code);padding:2px 6px;border-radius:6px}
+.msg__body pre{font-family:'JetBrains Mono',monospace;background:var(--code);
+  padding:14px 16px;border-radius:11px;overflow:auto;font-size:12.5px;
+  line-height:1.6;margin:16px 0}
+.msg__body pre code{background:none;padding:0;font-size:1em}
+.k{color:var(--accent)}
+
+.msg__tools{display:flex;gap:7px;margin-top:16px}
+.tool{background:var(--code);border:0;color:var(--dim);font:inherit;font-size:11.5px;
+  padding:6px 12px;border-radius:999px;cursor:pointer;transition:.15s}
+.tool:hover{background:color-mix(in oklab,var(--accent) 14%,transparent);color:var(--accent)}
+
+.caret{display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--accent);margin-left:5px;vertical-align:1px;
+  animation:p 1.2s ease-in-out infinite}
+@keyframes p{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+
+.ftr{position:relative;padding:14px 22px 18px}
+.composer{display:flex;gap:10px;align-items:stretch;background:var(--surface);
+  border:1px solid var(--line);border-radius:18px;padding:6px 6px 6px 18px;
+  box-shadow:var(--shadow)}
+.composer__input{flex:1;display:flex;align-items:center;color:var(--dim);font-size:14.5px}
+.btn{font:inherit;font-size:13.5px;font-weight:500;padding:11px 22px;cursor:pointer;
+  border:0;border-radius:13px;color:var(--accent-fg);
+  background:linear-gradient(135deg,var(--accent),color-mix(in oklab,var(--accent) 70%,var(--accent2)))}
+.btn--ghost{background:none;color:var(--dim);border:1px solid var(--line);
+  padding:6px 13px;font-size:12px;border-radius:999px}
+.hint{margin:11px 0 0;font-size:11px;color:var(--dim);text-align:center}
+kbd{font-family:'JetBrains Mono',monospace;border:1px solid var(--line);
+  padding:1px 5px;border-radius:5px;font-size:10px}
+
+.wrap{display:grid;grid-template-columns:1fr 1fr}
+.col{position:relative}
+.tag{position:absolute;top:0;left:0;background:var(--accent);color:var(--accent-fg);
+  font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 9px;
+  letter-spacing:.1em;z-index:3}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col pane"><span class="tag">C · СТУДИЯ · СВЕТЛАЯ</span><div class="app" id="l"></div></div>
+  <div class="col pane pane--dark"><span class="tag">C · СТУДИЯ · ТЁМНАЯ</span><div class="app" id="d"></div></div>
+</div>
+<script src="_content.js"></script>
+<script>l.innerHTML=CHAT;d.innerHTML=CHAT;</script>
+</body>
+</html>

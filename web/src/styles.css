@@ -303,8 +303,18 @@ body {
   color: var(--dim);
 }
 
-/* курсор печати — тонкая черта, как в наборе, а не квадрат */
-.caret {
+/* Курсор печати — тонкая черта, как в наборе, а не квадрат.
+   Рисуется на последнем блоке ответа: markdown отдаёт блочные <p>,
+   и отдельный элемент после них уезжал бы на свою строку под абзацем
+   вместо конца фразы. */
+/* Курсор ставится на последний ИНЛАЙНОВЫЙ контейнер, а не просто на
+   последний блок: ::after у <ol> раскрывается после всего списка и
+   падает на отдельную строку. Поэтому для списка целимся в последний
+   пункт, для цитаты — в последний абзац внутри неё. */
+.message--streaming .message__body > :is(p, h1, h2, h3, h4, h5, h6):last-child::after,
+.message--streaming .message__body > :is(ul, ol):last-child > li:last-child::after,
+.message--streaming .message__body > blockquote:last-child > p:last-child::after {
+  content: '';
   display: inline-block;
   width: 2px;
   height: 1.05em;
@@ -337,7 +347,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .caret { animation: none; opacity: 0.55 }
+  .message--streaming .message__body :last-child::after {
+    animation: none;
+    opacity: 0.55;
+  }
   .pending i { animation: none; opacity: 0.55 }
 }
 

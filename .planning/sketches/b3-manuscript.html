@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><title>B3 — Рубрикация</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+/* ── B3. РУБРИКАЦИЯ ─────────────────────────────────────────────
+   Книжная традиция: кремовая бумага, гаральд (Garamond),
+   красная рубрикация — красным выделяли заголовки в рукописях,
+   отсюда само слово «рубрика». Метки вынесены на поля слева,
+   как маргиналии. Тёмная тема — не инверсия, а «ночное чтение»:
+   тёплый уголь и приглушённая киноварь.
+   ──────────────────────────────────────────────────────────── */
+.pane{
+  --serif:'EB Garamond',Georgia,serif; --mono:'IBM Plex Mono',monospace;
+  --bg:#f7f3e9; --fg:#241f18; --dim:#8d8371; --line:#e0d8c6;
+  --accent:#a32b1c; --accent-fg:#f7f3e9; --code:#ede6d6; --user:#e9e1cd;
+}
+.pane--dark{
+  --bg:#14120e; --fg:#e6dfd0; --dim:#8a8170; --line:#26231c;
+  --accent:#d4634c; --accent-fg:#14120e; --code:#1c1a14; --user:#201d16;
+}
+
+.hdr{padding:18px 30px}
+.hdr__brand{font-size:19px;font-weight:600;letter-spacing:.01em}
+.hdr__brand::first-letter{color:var(--accent)}
+
+.feed{padding:36px 30px 36px 118px;gap:38px}
+
+/* маргиналия: метка уезжает на поля, текст начинается от края полосы */
+.msg{position:relative;max-width:64ch}
+.msg--bot .msg__who{position:absolute;left:-104px;top:.45em;width:92px;
+  text-align:right;line-height:1.5;color:var(--accent);opacity:.75}
+.msg--bot .msg__who em{display:block;color:var(--dim);opacity:.8;font-size:.9em}
+
+.msg--bot .msg__body{font-size:19px;line-height:1.66}
+.msg--user{max-width:46ch}
+.msg--user .msg__body{font-size:17px;border-left:2px solid var(--accent)}
+
+/* рубрика — красная, в подбор, как в старой книге */
+.msg__body h3{font-family:inherit;font-size:16px;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--accent);
+  margin:26px 0 10px}
+.msg__body h3::before{content:'¶ ';font-weight:400;opacity:.65}
+
+.msg__body ol{list-style:none;padding-left:0;counter-reset:n}
+.msg__body ol li{counter-increment:n;position:relative;padding-left:2.1em}
+.msg__body ol li::before{content:counter(n)'.';position:absolute;left:0;
+  color:var(--accent);font-weight:600}
+.msg__body pre{background:none;border:1px solid var(--line);padding:14px 17px}
+.msg__body code{background:none;color:var(--accent);
+  border-bottom:1px dotted var(--accent);padding:0 1px}
+.msg__body pre code{border:0;color:inherit}
+.tool{font-family:inherit;font-size:13px;letter-spacing:.04em;
+  text-transform:none;font-style:italic}
+.composer__input{background:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col pane"><span class="tag">B3 · РУБРИКАЦИЯ · СВЕТЛАЯ</span><div class="app" id="l"></div></div>
+  <div class="col pane pane--dark"><span class="tag">B3 · РУБРИКАЦИЯ · ТЁМНАЯ</span><div class="app" id="d"></div></div>
+</div>
+<script src="_content.js"></script>
+<script>l.innerHTML=CHAT;d.innerHTML=CHAT;</script>
+</body>
+</html>

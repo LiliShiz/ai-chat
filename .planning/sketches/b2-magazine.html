@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><title>B2 — Журнал</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+/* ── B2. ЖУРНАЛ ─────────────────────────────────────────────────
+   Контрастная антиква в заголовках (Playfair) против спокойной
+   текстовой (Source Serif) — классическая журнальная пара.
+   Много воздуха, чернильно-синий акцент, тёплая белая бумага.
+   ──────────────────────────────────────────────────────────── */
+.pane{
+  --serif:'Source Serif 4',Georgia,serif; --mono:'IBM Plex Mono',monospace;
+  --display:'Playfair Display',Georgia,serif;
+  --bg:#fcfbf9; --fg:#14161c; --dim:#82858f; --line:#e7e4df;
+  --accent:#1f3a93; --accent-fg:#fcfbf9; --code:#f1efec; --user:#eeecff;
+}
+.pane--dark{
+  --bg:#0f1014; --fg:#e8e7ea; --dim:#85868f; --line:#22242b;
+  --accent:#8ca4ff; --accent-fg:#0f1014; --code:#171921; --user:#1a1c2b;
+}
+
+.hdr{padding:20px 32px}
+.hdr__brand{font-family:var(--display);font-size:21px;font-weight:700;
+  letter-spacing:-.015em}
+
+.feed{padding:38px 32px;gap:40px}
+.msg{max-width:64ch}
+
+/* заголовок ответа — крупный, контрастный, «журнальный» */
+.msg__body h3{font-family:var(--display);font-size:20px;font-weight:500;
+  letter-spacing:-.01em;text-transform:none;color:var(--fg);
+  margin:30px 0 13px;line-height:1.25}
+.msg__body h3::after{content:'';display:block;width:42px;height:2px;
+  background:var(--accent);margin-top:11px}
+
+.msg--bot .msg__body{font-size:17.5px;line-height:1.72}
+/* первая фраза — лид, как в журнальной врезке */
+.msg--bot .msg__body>p:first-child{font-size:19px;line-height:1.58;
+  color:var(--fg);margin-bottom:22px}
+
+.msg--user .msg__body{border-radius:2px}
+.msg__who{color:var(--accent);opacity:.85}
+.msg__body li::marker{font-family:var(--display);font-weight:700}
+.msg__body pre{border-left:3px solid var(--accent)}
+.btn{border-radius:2px;font-weight:400}
+.composer__input{border-radius:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col pane"><span class="tag">B2 · ЖУРНАЛ · СВЕТЛАЯ</span><div class="app" id="l"></div></div>
+  <div class="col pane pane--dark"><span class="tag">B2 · ЖУРНАЛ · ТЁМНАЯ</span><div class="app" id="d"></div></div>
+</div>
+<script src="_content.js"></script>
+<script>l.innerHTML=CHAT;d.innerHTML=CHAT;</script>
+</body>
+</html>

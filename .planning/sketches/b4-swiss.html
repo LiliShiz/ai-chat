@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><title>B4 — Швейцарская</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Inter:wght@400;500;700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+/* ── B4. ШВЕЙЦАРСКАЯ ────────────────────────────────────────────
+   Строгая сетка, гротеск во всей обвязке, антиква только в теле
+   ответа. Два цвета: чёрный и красный, третьего нет. Никаких
+   скруглений, теней и полутонов — только выключка и ритм.
+   ──────────────────────────────────────────────────────────── */
+.pane{
+  --serif:Newsreader,Georgia,serif; --mono:'IBM Plex Mono',monospace;
+  --sans:Inter,system-ui,sans-serif;
+  --bg:#fff; --fg:#000; --dim:#8a8a8a; --line:#000;
+  --accent:#e0241b; --accent-fg:#fff; --code:#f2f2f2; --user:#f2f2f2;
+}
+.pane--dark{
+  --bg:#000; --fg:#fff; --dim:#8a8a8a; --line:#fff;
+  --accent:#ff4a3d; --accent-fg:#000; --code:#141414; --user:#141414;
+}
+
+.hdr{padding:0;border-bottom-width:2px;align-items:stretch}
+.hdr__brand{font-family:var(--sans);font-weight:700;font-size:13px;
+  letter-spacing:.02em;text-transform:uppercase;padding:14px 22px;
+  border-right:1px solid var(--line);display:flex;align-items:center}
+.hdr__meta{font-family:var(--sans);font-size:11px;letter-spacing:.02em;
+  text-transform:none;display:flex;align-items:center;padding:0 22px}
+.hdr .btn--ghost{border:0;border-left:1px solid var(--line);padding:0 20px;
+  font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.06em}
+
+.feed{padding:0;gap:0}
+/* каждое сообщение — ячейка сетки с жёсткой линейкой снизу */
+.msg{max-width:none;padding:26px 22px;border-bottom:1px solid var(--line);
+  display:grid;grid-template-columns:118px minmax(0,66ch);gap:0 22px;align-items:start}
+.msg__who{font-family:var(--sans);font-size:10px;font-weight:500;
+  letter-spacing:.1em;padding-top:.45em}
+.msg__who em{display:block;font-size:.92em;margin-top:3px}
+.msg--user{align-self:stretch;max-width:none}
+.msg--user .msg__who{color:var(--accent)}
+.msg--user .msg__body{background:none;padding:0;font-size:16px;font-weight:400}
+.msg--bot .msg__body{font-size:17px;line-height:1.62}
+
+.msg__body h3{font-family:var(--sans);font-size:11px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;margin:24px 0 11px;
+  color:var(--accent)}
+.msg__body ol{padding-left:0;list-style:none;counter-reset:n}
+/* Нумерация позиционируется, а не кладётся в грид: при display:grid
+   каждый inline-узел li становится отдельной ячейкой, и текст после
+   <strong> уезжает в колонку шириной 34px. */
+.msg__body ol li{counter-increment:n;position:relative;padding-left:34px;
+  margin-bottom:11px}
+.msg__body ol li::before{content:counter(n,decimal-leading-zero);
+  position:absolute;left:0;top:.42em;
+  font-family:var(--mono);font-size:11px;color:var(--accent)}
+.msg__body pre{background:var(--code);border-left:4px solid var(--accent);
+  padding:14px 17px}
+.tool{font-family:var(--sans);font-size:10px;font-weight:500;letter-spacing:.09em}
+
+.ftr{border-top-width:2px;padding:0}
+.composer{max-width:none;gap:0;align-items:stretch}
+.composer__input{border:0;background:none;padding:16px 22px;font-size:16px}
+.btn{border:0;border-left:1px solid var(--line);font-family:var(--sans);
+  font-size:11px;font-weight:700;letter-spacing:.1em;padding:0 28px}
+.hint{font-family:var(--sans);padding:0 22px 14px;margin:0;font-size:10px;
+  letter-spacing:.02em}
+kbd{font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col pane"><span class="tag">B4 · ШВЕЙЦАРСКАЯ · СВЕТЛАЯ</span><div class="app" id="l"></div></div>
+  <div class="col pane pane--dark"><span class="tag">B4 · ШВЕЙЦАРСКАЯ · ТЁМНАЯ</span><div class="app" id="d"></div></div>
+</div>
+<script src="_content.js"></script>
+<script>l.innerHTML=CHAT;d.innerHTML=CHAT;</script>
+</body>
+</html>

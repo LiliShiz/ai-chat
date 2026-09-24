@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><title>B1 — Газета</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=PT+Serif:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+/* ── B1. ГАЗЕТА ─────────────────────────────────────────────────
+   Холодная серая бумага, двойные линейки, буквица на первом
+   абзаце, рубрика набрана вразрядку. Полоса узкая — как колонка.
+   Акцент один и только для рубрикации: газета не цветная.
+   ──────────────────────────────────────────────────────────── */
+.pane{
+  --serif:'PT Serif',Georgia,serif; --mono:'IBM Plex Mono',monospace;
+  --bg:#f5f4f1; --fg:#17181a; --dim:#767a7e; --line:#d8d8d4;
+  --accent:#1a1b1d; --accent-fg:#f5f4f1; --code:#e9e9e5; --user:#e4e4de;
+}
+.pane--dark{
+  --bg:#111214; --fg:#e7e7e4; --dim:#7d8084; --line:#242629;
+  --accent:#e7e7e4; --accent-fg:#111214; --code:#191b1d; --user:#1c1e21;
+}
+
+/* двойная линейка под шапкой — типографский приём полосы */
+.hdr{border-bottom:3px double var(--line);padding-bottom:13px}
+.hdr__brand{font-weight:700;letter-spacing:.01em}
+.hdr__meta{font-size:10px;text-transform:uppercase;letter-spacing:.12em}
+
+.msg{max-width:62ch}
+.msg--bot .msg__body{font-size:16.5px;line-height:1.7;text-align:justify;
+  hyphens:auto}
+
+/* буквица — сразу сообщает «это материал, а не реплика» */
+.msg--bot .msg__body>p:first-child::first-letter{
+  float:left;font-size:3.05em;line-height:.82;font-weight:700;
+  margin:.06em .11em 0 0}
+
+/* рубрика вразрядку, как надзаголовок в полосе */
+.msg__body h3{font-family:inherit;font-size:12px;font-weight:700;
+  letter-spacing:.34em;text-transform:uppercase;margin:26px 0 12px;
+  padding-bottom:7px;border-bottom:1px solid var(--line)}
+
+.msg--user .msg__body{border-left:3px double var(--line)}
+.msg__body pre{border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:none;padding:14px 0}
+.msg__body li::marker{font-weight:700}
+.tool{letter-spacing:.14em}
+.btn{font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col pane"><span class="tag">B1 · ГАЗЕТА · СВЕТЛАЯ</span><div class="app" id="l"></div></div>
+  <div class="col pane pane--dark"><span class="tag">B1 · ГАЗЕТА · ТЁМНАЯ</span><div class="app" id="d"></div></div>
+</div>
+<script src="_content.js"></script>
+<script>l.innerHTML=CHAT;d.innerHTML=CHAT;</script>
+</body>
+</html>

@@ -96,7 +96,11 @@ function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
   };
 
   return (
-    <li className={`message message--${message.role}`}>
+    <li
+      className={`message message--${message.role}${
+        streaming && message.content ? ' message--streaming' : ''
+      }`}
+    >
       <span className="message__author">
         {isAssistant ? (
           <>
@@ -126,15 +130,19 @@ function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
 
         {/* Пока не пришёл первый токен, показываем пульсирующее место
             под ответ: одинокий курсор на пустой строке читается как
-            «сломалось», а не как «модель думает». */}
-        {streaming &&
-          (message.content ? (
-            <span className="caret" aria-hidden="true" />
-          ) : (
-            <span className="pending" aria-hidden="true">
-              <i /><i /><i />
-            </span>
-          ))}
+            «сломалось», а не как «модель думает».
+
+            Когда текст пошёл, курсор рисуется через ::after последнего
+            блока в CSS. Отдельным элементом его сюда не поставить:
+            markdown отдаёт блочные <p>, и курсор уезжал бы на свою
+            строку под абзацем вместо конца фразы. */}
+        {streaming && !message.content && (
+          <span className="pending" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+        )}
       </div>
 
       {message.stopped && <p className="message__note">Остановлено вами</p>}

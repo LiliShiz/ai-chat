@@ -66,6 +66,45 @@ describe('POST /api/chat — размер тела', () => {
     expect(response.status).toBe(413);
     expect(await response.json()).toMatchObject({ code: 'bad_request', retryable: false });
   });
+
+  it('отклоняет гигантское тело и без Content-Length', async () => {
+    // Заголовка может не быть вовсе — при Transfer-Encoding: chunked
+    // его и не бывает. Проверка только по заголовку обходится одной
+    // строкой в curl, поэтому байты считаются по ходу чтения.
+    const huge = new TextEncoder().encode(
+      JSON.stringify({ messages: [{ role: 'user', content: 'x'.repeat(2_000_000) }] }),
+    );
+
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        // Режем на куски, как это сделал бы chunked-клиент.
+        for (let offset = 0; offset < huge.length; offset += 64_000) {
+          controller.enqueue(huge.subarray(offset, offset + 64_000));
+        }
+        controller.close();
+      },
+    });
+
+    const response = await app.request(
+      new Request('http://localhost/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        // @ts-expect-error — undici требует duplex для потокового тела
+        duplex: 'half',
+      }),
+    );
+
+    expect(response.status).toBe(413);
+  });
+
+  it('обычный запрос лимитом не задевается', async () => {
+    stubUpstream('ок');
+
+    const response = await post({ messages: [{ role: 'user', content: 'короткий вопрос' }] });
+
+    expect(response.status).toBe(200);
+  });
 });
 
 describe('POST /api/chat — без ключа', () => {

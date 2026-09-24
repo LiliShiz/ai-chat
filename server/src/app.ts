@@ -36,18 +36,15 @@ app.post('/api/chat', async (c) => {
     );
   }
 
-  // Отсекаем гигантское тело ДО разбора: c.req.json() буферизует его
-  // целиком, и проверять лимиты после этого уже поздно — процесс к тому
-  // моменту уже съел память.
-  const declared = Number(c.req.header('content-length') ?? 0);
-  if (declared > config.maxBodyBytes) {
+  const body = await readCappedBody(c.req.raw, config.maxBodyBytes);
+  if (body === TOO_LARGE) {
     return c.json(
       { code: 'bad_request', message: 'Запрос слишком большой.', retryable: false },
       413,
     );
   }
 
-  const messages = parseMessages(await c.req.json().catch(() => null));
+  const messages = parseMessages(body);
   if ('error' in messages) {
     return c.json({ code: 'bad_request', message: messages.error, retryable: false }, 400);
   }
@@ -109,6 +106,64 @@ app.post('/api/chat', async (c) => {
 if (config.isProduction) {
   app.use('/*', serveStatic({ root: '../web/dist' }));
   app.get('/*', serveStatic({ path: '../web/dist/index.html' }));
+}
+
+const TOO_LARGE = Symbol('too-large');
+
+/**
+ * Читает тело с жёстким потолком.
+ *
+ * Заголовку `Content-Length` верить нельзя: его может не быть вовсе —
+ * при `Transfer-Encoding: chunked` его и не будет. Проверка только по
+ * заголовку обходится одной строкой в curl, поэтому считаем байты по
+ * ходу чтения и прекращаем, как только перевалили за лимит: до этого
+ * момента в памяти лежит не больше `limit` байт.
+ *
+ * Прокси стоит без авторизации, так что это не паранойя, а гигиена.
+ */
+async function readCappedBody(
+  request: Request,
+  limit: number,
+): Promise<unknown | typeof TOO_LARGE> {
+  // Дешёвый ранний отказ, если клиент честно объявил размер.
+  const declared = Number(request.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > limit) return TOO_LARGE;
+
+  if (!request.body) return null;
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) return TOO_LARGE;
+      chunks.push(value);
+    }
+  } catch {
+    return null;
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+
+  try {
+    return JSON.parse(new TextDecoder().decode(concat(chunks, size)));
+  } catch {
+    return null;
+  }
+}
+
+function concat(chunks: Uint8Array[], size: number): Uint8Array {
+  const out = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
 }
 
 function parseMessages(body: unknown): { value: ChatMessage[] } | { error: string } {

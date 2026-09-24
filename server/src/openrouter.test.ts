@@ -110,17 +110,88 @@ describe('ошибки апстрима', () => {
 });
 
 describe('отмена и таймауты', () => {
-  it('«Стоп» завершает поток молча, без события ошибки', async () => {
-    // Пользователь сам прервал генерацию — это не авария, и показывать
-    // ему красную плашку было бы враньём.
+  it('«Стоп» посреди генерации завершает поток молча, без ошибки', async () => {
+    // Пользователь сам прервал генерацию — это не авария, и красная
+    // плашка была бы враньём. Апстрим при отмене рвёт тело с ошибкой:
+    // именно её и нужно проглотить, отличив от настоящего обрыва.
     const controller = new AbortController();
-    mockUpstream([frame({ choices: [{ delta: { content: 'раз' } }] })], undefined, () =>
-      controller.abort(),
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        const encoder = new TextEncoder();
+        const body = new ReadableStream<Uint8Array>({
+          start(streamController) {
+            streamController.enqueue(
+              encoder.encode(frame({ choices: [{ delta: { content: 'раз' } }] })),
+            );
+            // Клиент жмёт «Стоп» после первого токена.
+            setTimeout(() => controller.abort(), 0);
+            init?.signal?.addEventListener(
+              'abort',
+              () => streamController.error(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            );
+          },
+        });
+        return new Response(body, { status: 200 });
+      }),
     );
 
     const events = await collect(controller.signal);
 
+    expect(text(events)).toBe('раз');
     expect(events.filter((e) => e.type === 'error')).toHaveLength(0);
+    // И никакого 'done' тоже: ответ не закончился, его прервали.
+    expect(events.filter((e) => e.type === 'done')).toHaveLength(0);
+  });
+
+  it('«Стоп» до первого байта тоже не считается аварией', async () => {
+    // Здесь падает сам fetch, а не чтение тела — ветка другая.
+    const controller = new AbortController();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        controller.abort();
+        throw new DOMException('Aborted', 'AbortError');
+      }),
+    );
+
+    expect(await collect(controller.signal)).toEqual([]);
+  });
+
+  it('настоящий обрыв тела, наоборот, доезжает ошибкой', async () => {
+    // Контрольный к двум предыдущим: без сигнала отмены тот же самый
+    // разрыв обязан превратиться в событие ошибки, иначе клиент решит,
+    // что ответ просто закончился.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const encoder = new TextEncoder();
+        let served = false;
+        // pull, а не start: так кадр гарантированно доезжает до
+        // читателя раньше обрыва, и тест не зависит от гонки.
+        const body = new ReadableStream<Uint8Array>({
+          pull(streamController) {
+            if (served) {
+              streamController.error(new Error('connection reset'));
+              return;
+            }
+            served = true;
+            streamController.enqueue(
+              encoder.encode(frame({ choices: [{ delta: { content: 'раз' } }] })),
+            );
+          },
+        });
+        return new Response(body, { status: 200 });
+      }),
+    );
+
+    const events = await collect();
+
+    expect(text(events)).toBe('раз');
+    expect(events.at(-1)).toMatchObject({ type: 'error', error: { code: 'upstream' } });
   });
 
   it('рвёт соединение с апстримом, когда клиент отвалился', async () => {

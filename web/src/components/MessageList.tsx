@@ -113,9 +113,14 @@ function MessageItem({ message, streaming, onRegenerate }: ItemProps) {
 
       <div
         className="message__body"
-        // Поток текста озвучивается по мере поступления, но вежливо —
-        // не перебивая то, что скринридер читает сейчас.
-        aria-live={isAssistant ? 'polite' : undefined}
+        // Живой регион — только на том ответе, который сейчас пишется.
+        //
+        // Раньше он висел на каждом ответе ассистента. После F5
+        // восстановленная история давала скринридеру пачку живых
+        // регионов разом, а во время стрима перерисовка markdown
+        // заставляла перечитывать блок целиком.
+        aria-live={streaming ? 'polite' : undefined}
+        aria-busy={streaming || undefined}
       >
         {isAssistant ? (
           // Пока чанк с markdown не подгрузился, показываем сырой

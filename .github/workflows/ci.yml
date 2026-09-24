@@ -59,10 +59,15 @@ jobs:
           curl -sf http://localhost:8787/ | grep -qi '<div id="root">'
 
           echo '— /api/chat действительно стримит'
+          # Пишем в файл, а не в пайп к grep: grep -q закрывает пайп на
+          # первом совпадении, curl получает ошибку записи и валит шаг
+          # с кодом 23 — притом что проверка как раз прошла.
           curl -sN --max-time 20 -X POST http://localhost:8787/api/chat \
             -H 'Content-Type: application/json' \
             -d '{"messages":[{"role":"user","content":"привет"}]}' \
-            | grep -q '"type":"delta"'
+            -o /tmp/stream.txt
+          grep -q '"type":"delta"' /tmp/stream.txt
+          grep -q '"type":"done"' /tmp/stream.txt
 
           echo '— и валидирует запрос'
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \

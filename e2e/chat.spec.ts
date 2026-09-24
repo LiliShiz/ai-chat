@@ -124,9 +124,16 @@ test('обрыв сети даёт внятное состояние, а не б
   await expect(page.locator('.header__status')).toContainText(/нет сети/i);
 
   // Сеть вернулась — интерфейс снова рабочий, повтор проходит.
+  //
+  // Ждём, пока браузер сам признает, что он онлайн: `setOffline(false)`
+  // возвращается раньше, чем обновляется `navigator.onLine`, и клик по
+  // «Повторить» в этом окне снова упёрся бы в проверку офлайна.
   await context.setOffline(false);
+  await expect(page.locator('.header__status')).not.toContainText(/нет сети/i);
+  await page.waitForFunction(() => navigator.onLine === true);
+
   await page.getByRole('alert').getByRole('button').click();
-  await expect(answer(page)).not.toBeEmpty();
+  await expect(answer(page)).not.toBeEmpty({ timeout: 20_000 });
 });
 
 test('история переживает перезагрузку страницы', async ({ page }) => {

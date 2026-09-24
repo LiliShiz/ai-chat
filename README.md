@@ -6,6 +6,8 @@
 
 React 19 + TypeScript + Vite · Node + Hono · SSE
 
+[![CI](https://github.com/LiliShiz/ai-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/LiliShiz/ai-chat/actions/workflows/ci.yml)
+
 ![Пустое состояние](docs/empty-state.png)
 
 ---

@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
+
+import { rehypeHighlightSubset } from '../lib/highlight';
 
 /**
  * Рендер ответа модели.
@@ -14,10 +15,10 @@ export default function Markdown({ children }: { children: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      // detect: false — подсвечиваем только то, где язык указан явно.
-      // Автоопределение на обрывке кода посреди стрима регулярно
-      // угадывает не тот язык и перекрашивает блок на лету.
-      rehypePlugins={[[rehypeHighlight, { detect: false, ignoreMissing: true }]]}
+      // Свой мини-плагин вместо rehype-highlight: тот всегда тянет
+      // common-набор highlight.js (~40 грамматик), а нам нужно шесть.
+      // Подробности — в lib/highlight.ts.
+      rehypePlugins={[rehypeHighlightSubset]}
       components={{ pre: Pre }}
     >
       {children}

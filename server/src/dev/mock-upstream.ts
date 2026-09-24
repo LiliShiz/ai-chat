@@ -50,10 +50,31 @@ app.post('/chat/completions', async (c) => {
   }
 
   if (last.includes('#timeout')) {
-    // Держим соединение открытым и не отвечаем — ровно то, что делает
-    // перегруженная бесплатная модель. Сработает FIRST_TOKEN_TIMEOUT_MS.
-    return new Response(new ReadableStream({ start() {} }), {
-      headers: { 'Content-Type': 'text/event-stream' },
+    // Соединение живое, данных нет — ровно то, что делает
+    // перегруженная бесплатная модель, пока стоит в очереди.
+    //
+    // Пустой поток тут не годится: без единого байта сервер закрывает
+    // ответ сразу, и на клиенте это неотличимо от обрыва. Поэтому
+    // шлём keep-alive комментарии, как настоящий OpenRouter. Они не
+    // сбрасывают сторожевой таймер — сработает FIRST_TOKEN_TIMEOUT_MS.
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const encoder = new TextEncoder();
+        const tick = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(': OPENROUTER PROCESSING\n\n'));
+          } catch {
+            clearInterval(tick);
+          }
+        }, 500);
+      },
+      cancel() {
+        // Клиент ушёл — интервал умрёт вместе с потоком.
+      },
+    });
+
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
     });
   }
 

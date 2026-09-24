@@ -7,6 +7,7 @@ on:
 
 jobs:
   check:
+    name: Типы, тесты, сборка, прод-режим
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,26 +29,75 @@ jobs:
       # выяснилось, что `npm start` не выставлял NODE_ENV и отдавал
       # 404 на всё, кроме /api — сборка это не ловила, потому что
       # собиралось-то всё успешно.
-      - name: Smoke — прод-режим отдаёт фронт и /api/health
+      #
+      # Апстримом работает поддельный OpenRouter: ключа в CI нет, а
+      # проверить надо именно стриминг, а не только то, что порт открыт.
+      - name: Smoke — прод-режим отдаёт фронт и стримит ответ
         run: |
           set -euo pipefail
-          OPENROUTER_API_KEY=ci-smoke-not-a-real-key npm start &
-          # PID, а не `kill %1`: управление задачами в неинтерактивном
-          # bash работает не везде, и его падение покрасило бы шаг
-          # ложно — уже после того, как проверки прошли.
+
+          npm run mock -w server &
+          MOCK_PID=$!
+          OPENROUTER_BASE_URL=http://localhost:8788 \
+          OPENROUTER_API_KEY=ci-smoke-not-a-real-key \
+            npm start &
           SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          # kill по PID, а не `kill %1`: управление задачами в
+          # неинтерактивном bash работает не везде, и его падение
+          # покрасило бы шаг ложно — уже после успешных проверок.
+          trap 'kill "$SERVER_PID" "$MOCK_PID" 2>/dev/null || true' EXIT
 
           for _ in $(seq 1 30); do
             curl -sf http://localhost:8787/api/health >/dev/null && break
             sleep 1
           done
 
+          echo '— health'
           curl -sf http://localhost:8787/api/health | grep -q '"ok":true'
+
+          echo '— собранный фронт с того же origin'
           curl -sf http://localhost:8787/ | grep -qi '<div id="root">'
-          # Проверяем и саму суть: прокси жив и валидирует запрос.
-          # Без ключа апстрима в CI дальше валидации не уйти, но ровно
-          # эта ветка и ловит «сервер поднялся, а /api/chat отвалился».
+
+          echo '— /api/chat действительно стримит'
+          # Пишем в файл, а не в пайп к grep: grep -q закрывает пайп на
+          # первом совпадении, curl получает ошибку записи и валит шаг
+          # с кодом 23 — притом что проверка как раз прошла.
+          curl -sN --max-time 20 -X POST http://localhost:8787/api/chat \
+            -H 'Content-Type: application/json' \
+            -d '{"messages":[{"role":"user","content":"привет"}]}' \
+            -o /tmp/stream.txt
+          grep -q '"type":"delta"' /tmp/stream.txt
+          grep -q '"type":"done"' /tmp/stream.txt
+
+          echo '— и валидирует запрос'
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
             http://localhost:8787/api/chat \
             -H 'Content-Type: application/json' -d '{"messages":[]}')" = "400"
+
+  e2e:
+    name: E2E в браузере
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      # Стенд поднимает сам Playwright (webServer в конфиге):
+      # поддельный апстрим + прокси с заниженными таймаутами + Vite.
+      - run: npm run e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

@@ -398,3 +398,23 @@ describe('история', () => {
     expect(JSON.parse(sessionStorage.getItem('ai-chat:history:v1') ?? '[]')).toEqual([]);
   });
 });
+
+describe('незащищённый контекст (http на IP)', () => {
+  it('отправка работает без crypto.randomUUID', async () => {
+    // Именно этот случай убивал приложение на телефоне: метод есть
+    // только в защищённом контексте, а страница по http на IP таким
+    // не является. Обработчик падал TypeError — ни запроса, ни
+    // сообщения об ошибке.
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    });
+    respond(['ответ']);
+
+    const { result } = renderHook(() => useChat(MODEL));
+    await act(async () => result.current.send('вопрос'));
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+
+    expect(result.current.messages.map((m) => m.content)).toEqual(['вопрос', 'ответ']);
+    vi.unstubAllGlobals();
+  });
+});

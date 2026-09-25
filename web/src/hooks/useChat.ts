@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { streamChat } from '../lib/streamChat';
 import { loadHistory, saveHistory } from '../lib/history';
+import { newId } from '../lib/id';
 import type { ChatError, Message } from '../types';
 
 export type ChatStatus =
@@ -199,8 +200,4 @@ export function useChat(model: string | null): UseChat {
   }, []);
 
   return { messages, status, error, send, stop, retry, clear };
-}
-
-function newId(): string {
-  return crypto.randomUUID();
 }

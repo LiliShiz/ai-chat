@@ -50,7 +50,11 @@ export function Composer({ busy, onSend, onStop }: Props) {
         parseFloat(styles.borderBottomWidth),
       lineHeight * MAX_ROWS + chrome,
     );
-    el.style.height = `${Math.max(min, fit)}px`;
+    // Округляем вверх: высота считается с долями пикселя (рамка
+    // 0.8px при dpr, дробный line-height), clientHeight округляется
+    // вниз — и поля не хватает на один пиксель, отчего браузер рисует
+    // паразитный скроллбар.
+    el.style.height = `${Math.ceil(Math.max(min, fit))}px`;
   }, []);
 
   // Textarea растёт под текст до потолка, дальше скроллится.

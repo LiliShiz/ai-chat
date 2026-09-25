@@ -196,3 +196,43 @@ test('у каждой кнопки есть видимое кольцо фоку
   expect(seen.join(' '), 'кнопка «К последнему» недостижима табом').toContain('jump');
   expect(missing, `без кольца фокуса: ${missing.join(', ')}`).toEqual([]);
 });
+
+test('на низком экране пустое состояние не наезжает на ввод', async ({ page }) => {
+  // Найдено на живом телефоне: экран низкий (панели браузера съедают
+  // высоту), пустое состояние перерастало свою строку грида и
+  // рисовалось поверх футера. Текст наезжал на поле ввода, а невидимая
+  // часть перехватывала нажатия — кнопка «Отправить» не нажималась.
+  //
+  // 600px по высоте — примерно то, что остаётся от телефона во
+  // встроенном браузере мессенджера.
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.reload();
+
+  await composer(page).pressSequentially(
+    'Привет, ты умеешь картинки генерировать и ещё что-то',
+  );
+
+  const layout = await page.evaluate(() => {
+    const main = document.querySelector('.main')!.getBoundingClientRect();
+    const empty = document.querySelector('.empty')!.getBoundingClientRect();
+    const button = document.querySelector('.composer .button') as HTMLButtonElement;
+    const rect = button.getBoundingClientRect();
+    const hit = document.elementFromPoint(
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2,
+    );
+    return {
+      overflowPx: Math.round(empty.bottom - main.bottom),
+      buttonCovered: !button.contains(hit),
+      coveredBy: hit?.className ?? null,
+    };
+  });
+
+  expect(layout.overflowPx, 'пустое состояние вылезает за свою строку').toBeLessThanOrEqual(0);
+  expect(layout.buttonCovered, `кнопку перекрывает ${layout.coveredBy}`).toBe(false);
+
+  // И контрольный выстрел: кнопка действительно кликается, а не просто
+  // «не перекрыта» по расчётам.
+  await page.getByRole('button', { name: /^отправить$/i }).click({ timeout: 5000 });
+  await expect(page.locator('.message--user')).toHaveCount(1);
+});

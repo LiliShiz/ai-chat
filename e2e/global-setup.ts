@@ -14,6 +14,33 @@ const TIMEOUT_MS = 90_000;
 export default async function globalSetup(): Promise<void> {
   await waitFor(HEALTH, 'прокси (8787)');
   await waitFor(VITE, 'Vite (5173)');
+  await assertMockUpstream();
+}
+
+/**
+ * Проверяем, что прокси смотрит на поддельный апстрим, а не на живой
+ * OpenRouter.
+ *
+ * Иначе бывает так: на 8787 остался сервер от другого запуска, стенд
+ * не смог занять порт, а health при этом отвечает — и половина тестов
+ * падает загадочными 502 от настоящей модели. Один запрос с маркером
+ * #429 отличает мок от живого апстрима за полсекунды.
+ */
+async function assertMockUpstream(): Promise<void> {
+  const response = await fetch('http://localhost:8787/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: '#429' }] }),
+  });
+  const body = await response.text();
+
+  if (!body.includes('"code":"rate_limit"')) {
+    throw new Error(
+      'На 8787 отвечает не поддельный апстрим. ' +
+        'Скорее всего порт занял сервер от другого запуска, и стенд не смог подняться. ' +
+        `Ответ на маркер #429: ${body.slice(0, 200)}`,
+    );
+  }
 }
 
 async function waitFor(url: string, what: string): Promise<void> {

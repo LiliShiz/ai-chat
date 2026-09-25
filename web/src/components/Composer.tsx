@@ -95,6 +95,24 @@ export function Composer({ busy, onSend, onStop }: Props) {
     wasBusy.current = busy;
   }, [busy]);
 
+  /**
+   * Не отдаём фокус поля ввода при нажатии мышью.
+   *
+   * Только мышью — и это важно. На тач-устройствах браузер шлёт
+   * синтетический mousedown уже после touchend, и preventDefault на
+   * нём в ряде движков (включая вебвью Телеграма) отменяет и
+   * последующий click. Кнопка при этом honestно подсвечивается
+   * нажатой, но обработчик не вызывается: «нажимается, а ничего не
+   * происходит».
+   *
+   * Для тача задачу решает другое — `interactive-widget=resizes-content`
+   * в viewport: клавиатура сжимает раскладку, и кнопка не уезжает
+   * из-под пальца.
+   */
+  const keepFocus = (event: React.PointerEvent) => {
+    if (event.pointerType === 'mouse') event.preventDefault();
+  };
+
   const submit = () => {
     if (busy || !text.trim()) return;
     onSend(text);
@@ -138,11 +156,28 @@ export function Composer({ busy, onSend, onStop }: Props) {
       </p>
 
       {busy ? (
-        <button type="button" className="button button--stop" onClick={onStop}>
+        <button
+          type="button"
+          className="button button--stop"
+          onPointerDown={keepFocus}
+          onClick={onStop}
+        >
           Стоп
         </button>
       ) : (
-        <button type="submit" className="button button--send" disabled={!text.trim()}>
+        <button
+          type="submit"
+          className="button button--send"
+          // Не отдаём фокус полю ввода при нажатии.
+          //
+          // На телефоне иначе так: палец касается кнопки → textarea
+          // теряет фокус → экранная клавиатура уезжает → высота
+          // видимой области меняется → кнопка уходит из-под пальца
+          // раньше, чем касание завершится. Клик не доезжает, и
+          // выглядит это как «кнопка не нажимается».
+          onPointerDown={keepFocus}
+          disabled={!text.trim()}
+        >
           Отправить
         </button>
       )}

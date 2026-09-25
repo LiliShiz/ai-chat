@@ -16,7 +16,14 @@ export function useCopy(resetAfterMs = 1600): [boolean, (text: string) => void] 
   const copy = useCallback(
     (text: string) => {
       if (!text) return;
-      navigator.clipboard.writeText(text).then(
+
+      // navigator.clipboard тоже живёт только в защищённом контексте.
+      // По http на IP её просто нет — без этой проверки обработчик
+      // бросает TypeError, и кнопка «молчит».
+      const clipboard = navigator.clipboard;
+      if (!clipboard) return;
+
+      clipboard.writeText(text).then(
         () => {
           setCopied(true);
           clearTimeout(timer.current);

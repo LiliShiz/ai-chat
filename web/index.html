@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover + safe-area в CSS: на iPhone лента не заезжает под home-индикатор -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- interactive-widget=resizes-content: экранная клавиатура сжимает
+         саму раскладку, а не накрывает её. Без этого футер с полем
+         ввода остаётся под клавиатурой, а 100dvh считается по высоте
+         БЕЗ неё — то есть по области, которой на экране уже нет. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Веб-чат с языковой моделью через OpenRouter" />
     <!-- Инлайновая иконка: одним запросом меньше и никакого 404 в консоли -->

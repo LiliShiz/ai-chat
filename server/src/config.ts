@@ -54,7 +54,7 @@ export const config = {
    * а актуальный список берётся из GET /api/v1/models с фильтром
    * по суффиксу `:free`.
    */
-  model: process.env.OPENROUTER_MODEL ?? 'google/gemma-4-31b-it:free',
+  model: process.env.OPENROUTER_MODEL ?? 'nvidia/nemotron-3.5-lightning:free',
 
   baseUrl: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
 

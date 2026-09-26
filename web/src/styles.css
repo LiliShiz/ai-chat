@@ -834,7 +834,24 @@ body {
   display: flex;
   border: 1px solid var(--line);
   border-radius: 3px;
-  overflow: hidden;
+  /* Без overflow: hidden.
+     Кольцо фокуса рисуется тенью, то есть СНАРУЖИ кнопки, а кнопки
+     заполняют группу целиком — обрезка по контейнеру срезала бы его
+     подчистую. И это была бы не мелочь: в группе одна остановка
+     табуляции, так что человек, идущий с клавиатуры, гарантированно
+     попадал бы на элемент без видимого фокуса.
+     Скругление внутренних углов делаем на самих кнопках. */
+  border-radius: 3px;
+}
+
+.theme__option:first-child {
+  border-start-start-radius: 2px;
+  border-end-start-radius: 2px;
+}
+
+.theme__option:last-child {
+  border-start-end-radius: 2px;
+  border-end-end-radius: 2px;
 }
 
 .theme__option {

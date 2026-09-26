@@ -172,11 +172,26 @@ test('у каждой кнопки есть видимое кольцо фоку
     const info = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
       if (!el || el === document.body) return null;
+      // Ищем предка, который обрезает содержимое: кольцо рисуется
+      // снаружи кнопки, и такой предок съест его целиком.
+      let clipped = false;
+      const own = el.getBoundingClientRect();
+      for (let node = el.parentElement; node; node = node.parentElement) {
+        const overflow = getComputedStyle(node).overflow;
+        if (overflow === 'visible') continue;
+        const box = node.getBoundingClientRect();
+        // 4px — внешний радиус кольца.
+        if (own.left - box.left < 4 || box.right - own.right < 4) clipped = true;
+        if (own.top - box.top < 4 || box.bottom - own.bottom < 4) clipped = true;
+        break;
+      }
+
       return {
         tag: el.tagName.toLowerCase(),
         cls: el.className?.toString() ?? '',
         visible: el.matches(':focus-visible'),
         shadow: getComputedStyle(el).boxShadow,
+        clipped,
       };
     });
     if (!info || info.tag !== 'button') continue;
@@ -185,7 +200,12 @@ test('у каждой кнопки есть видимое кольцо фоку
     // Ищем именно кольцо: `0px 0px 0px 4px` — то, во что браузер
     // разворачивает внешний слой --focus-ring. Наивная проверка
     // `includes('4px')` проходила бы на любой тени с «14px».
-    if (!info.visible || !/0px 0px 0px 4px/.test(info.shadow)) missing.push(info.cls);
+    const declared = /0px 0px 0px 4px/.test(info.shadow);
+    // ...и отдельно — что кольцо не срезано предком. computed style
+    // про обрезку не знает: `overflow: hidden` у родителя оставляет
+    // тень объявленной, но невидимой. Ровно так кольцо пропало у
+    // переключателя темы, и тест этого не замечал.
+    if (!info.visible || !declared || info.clipped) missing.push(info.cls);
   }
 
   // Кнопки вообще нашлись — иначе тест ничего не проверил бы.

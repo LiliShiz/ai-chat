@@ -174,11 +174,15 @@ test('у каждой кнопки есть видимое кольцо фоку
       if (!el || el === document.body) return null;
       // Ищем предка, который обрезает содержимое: кольцо рисуется
       // снаружи кнопки, и такой предок съест его целиком.
+      // Перед замером подтягиваем элемент в зону видимости так же,
+      // как это делает браузер при переходе табом: иначе «обрезанным»
+      // посчитается всё, что просто прокручено за край.
+      el.scrollIntoView({ block: 'nearest' });
+
       let clipped = false;
       const own = el.getBoundingClientRect();
       for (let node = el.parentElement; node; node = node.parentElement) {
-        const overflow = getComputedStyle(node).overflow;
-        if (overflow === 'visible') continue;
+        if (getComputedStyle(node).overflow === 'visible') continue;
         const box = node.getBoundingClientRect();
         // 4px — внешний радиус кольца.
         if (own.left - box.left < 4 || box.right - own.right < 4) clipped = true;
